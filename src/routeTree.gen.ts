@@ -10,33 +10,154 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CadastrarRouteImport } from './routes/cadastrar'
+import { Route as EntrarRouteImport } from './routes/entrar'
+import { Route as PainelRouteImport } from './routes/painel'
+import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
+import { Route as EmpresasNovaRouteImport } from './routes/empresas.nova'
+import { Route as StateCitySlugRouteImport } from './routes/$state.$city.$slug'
+import { Route as EmpresasIdEditarRouteImport } from './routes/empresas.$id.editar'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CadastrarRoute = CadastrarRouteImport.update({
+  id: '/cadastrar',
+  path: '/cadastrar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EntrarRoute = EntrarRouteImport.update({
+  id: '/entrar',
+  path: '/entrar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PainelRoute = PainelRouteImport.update({
+  id: '/painel',
+  path: '/painel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
+  id: '/recuperar-senha',
+  path: '/recuperar-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/auth/reset-password',
+  path: '/auth/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpresasNovaRoute = EmpresasNovaRouteImport.update({
+  id: '/empresas/nova',
+  path: '/empresas/nova',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StateCitySlugRoute = StateCitySlugRouteImport.update({
+  id: '/$state/$city/$slug',
+  path: '/$state/$city/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpresasIdEditarRoute = EmpresasIdEditarRouteImport.update({
+  id: '/empresas/$id/editar',
+  path: '/empresas/$id/editar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/cadastrar': typeof CadastrarRoute
+  '/entrar': typeof EntrarRoute
+  '/painel': typeof PainelRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/empresas/nova': typeof EmpresasNovaRoute
+  '/$state/$city/$slug': typeof StateCitySlugRoute
+  '/empresas/$id/editar': typeof EmpresasIdEditarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/cadastrar': typeof CadastrarRoute
+  '/entrar': typeof EntrarRoute
+  '/painel': typeof PainelRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/empresas/nova': typeof EmpresasNovaRoute
+  '/$state/$city/$slug': typeof StateCitySlugRoute
+  '/empresas/$id/editar': typeof EmpresasIdEditarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/cadastrar': typeof CadastrarRoute
+  '/entrar': typeof EntrarRoute
+  '/painel': typeof PainelRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/empresas/nova': typeof EmpresasNovaRoute
+  '/$state/$city/$slug': typeof StateCitySlugRoute
+  '/empresas/$id/editar': typeof EmpresasIdEditarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/cadastrar'
+    | '/entrar'
+    | '/painel'
+    | '/recuperar-senha'
+    | '/auth/callback'
+    | '/auth/reset-password'
+    | '/empresas/nova'
+    | '/$state/$city/$slug'
+    | '/empresas/$id/editar'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/cadastrar'
+    | '/entrar'
+    | '/painel'
+    | '/recuperar-senha'
+    | '/auth/callback'
+    | '/auth/reset-password'
+    | '/empresas/nova'
+    | '/$state/$city/$slug'
+    | '/empresas/$id/editar'
+  id:
+    | '__root__'
+    | '/'
+    | '/cadastrar'
+    | '/entrar'
+    | '/painel'
+    | '/recuperar-senha'
+    | '/auth/callback'
+    | '/auth/reset-password'
+    | '/empresas/nova'
+    | '/$state/$city/$slug'
+    | '/empresas/$id/editar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CadastrarRoute: typeof CadastrarRoute
+  EntrarRoute: typeof EntrarRoute
+  PainelRoute: typeof PainelRoute
+  RecuperarSenhaRoute: typeof RecuperarSenhaRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
+  EmpresasNovaRoute: typeof EmpresasNovaRoute
+  StateCitySlugRoute: typeof StateCitySlugRoute
+  EmpresasIdEditarRoute: typeof EmpresasIdEditarRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +169,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cadastrar': {
+      id: '/cadastrar'
+      path: '/cadastrar'
+      fullPath: '/cadastrar'
+      preLoaderRoute: typeof CadastrarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/entrar': {
+      id: '/entrar'
+      path: '/entrar'
+      fullPath: '/entrar'
+      preLoaderRoute: typeof EntrarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/painel': {
+      id: '/painel'
+      path: '/painel'
+      fullPath: '/painel'
+      preLoaderRoute: typeof PainelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recuperar-senha': {
+      id: '/recuperar-senha'
+      path: '/recuperar-senha'
+      fullPath: '/recuperar-senha'
+      preLoaderRoute: typeof RecuperarSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empresas/nova': {
+      id: '/empresas/nova'
+      path: '/empresas/nova'
+      fullPath: '/empresas/nova'
+      preLoaderRoute: typeof EmpresasNovaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$state/$city/$slug': {
+      id: '/$state/$city/$slug'
+      path: '/$state/$city/$slug'
+      fullPath: '/$state/$city/$slug'
+      preLoaderRoute: typeof StateCitySlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empresas/$id/editar': {
+      id: '/empresas/$id/editar'
+      path: '/empresas/$id/editar'
+      fullPath: '/empresas/$id/editar'
+      preLoaderRoute: typeof EmpresasIdEditarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CadastrarRoute: CadastrarRoute,
+  EntrarRoute: EntrarRoute,
+  PainelRoute: PainelRoute,
+  RecuperarSenhaRoute: RecuperarSenhaRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
+  EmpresasNovaRoute: EmpresasNovaRoute,
+  StateCitySlugRoute: StateCitySlugRoute,
+  EmpresasIdEditarRoute: EmpresasIdEditarRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
