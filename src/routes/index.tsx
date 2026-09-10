@@ -310,7 +310,7 @@ function Index() {
       {/* Categorias + mapa */}
       <section className="mx-auto max-w-7xl px-4 py-8">
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
             {categories.map(({ label, icon: Icon, tone }) => (
               <a
                 key={label}
