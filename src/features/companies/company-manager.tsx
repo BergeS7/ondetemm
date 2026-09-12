@@ -1,9 +1,18 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, Trash2, Plus, Save } from "lucide-react";
-import { api, message, type Company, type Page } from "@/lib/api";
+import {
+  api,
+  allPages,
+  message,
+  type Company,
+  type Page,
+  type State,
+  type City,
+} from "@/lib/api";
 import { useAuth } from "@/features/auth/auth-provider";
 import { Loading, ErrorNotice, buttonClass, inputClass } from "@/components/site-shell";
+import { CompanyForm } from "./company-form";
 const muted = "text-sm text-muted-foreground";
 const secondary =
   "inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium hover:bg-blue-50 disabled:opacity-40";
@@ -633,5 +642,83 @@ function ItemForm({
         </button>
       </div>
     </form>
+  );
+}
+type ManagerSection = "dados" | "fotos" | "horarios" | "servicos" | "promocoes";
+const managerSections: { key: ManagerSection; label: string }[] = [
+  { key: "dados", label: "Dados e contatos" },
+  { key: "fotos", label: "Fotos" },
+  { key: "horarios", label: "Horários" },
+  { key: "servicos", label: "Serviços" },
+  { key: "promocoes", label: "Promoções" },
+];
+function useManagedCompany(id: string) {
+  return useQuery({
+    queryKey: ["private", "manage", id, "company"],
+    queryFn: ({ signal }) =>
+      api.request<ManagedCompany>(`/companies/${id}`, { authenticated: true, signal }),
+    enabled: !!id,
+  });
+}
+export function CompanyManager({ id }: { id: string }) {
+  const cache = useQueryClient();
+  const company = useManagedCompany(id);
+  const states = useQuery({
+    queryKey: ["states"],
+    queryFn: ({ signal }) => allPages<State>("/states", signal),
+  });
+  const stateId = company.data?.state_id;
+  const cities = useQuery({
+    queryKey: ["cities", stateId],
+    queryFn: ({ signal }) => allPages<City>(`/states/${stateId}/cities`, signal),
+    enabled: !!stateId,
+  });
+  const [section, setSection] = useState<ManagerSection>("dados");
+  const refresh = () => cache.invalidateQueries({ queryKey: ["private", "manage", id, "company"] });
+  if (company.isPending) return <Loading text="Carregando empresa" />;
+  if (company.error || !company.data)
+    return (
+      <ErrorNotice onRetry={() => void company.refetch()}>{message(company.error)}</ErrorNotice>
+    );
+  const c = company.data;
+  const state = states.data?.find((s) => s.id === c.state_id);
+  const city = cities.data?.find((x) => x.id === c.city_id);
+  const publicHref = state && city ? `/${state.code.toLowerCase()}/${city.slug}/${c.slug}` : null;
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-bold">{c.name}</h1>
+        {publicHref && (
+          <a
+            href={publicHref}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm font-semibold text-brand hover:underline"
+          >
+            Ver perfil público
+          </a>
+        )}
+      </div>
+      <nav className="flex flex-wrap gap-2" aria-label="Seções do cadastro">
+        {managerSections.map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            aria-pressed={section === s.key}
+            className={section === s.key ? buttonClass : secondary}
+            onClick={() => setSection(s.key)}
+          >
+            {s.label}
+          </button>
+        ))}
+      </nav>
+      {section === "dados" && (
+        <CompanyForm initial={c} mode="admin" onSaved={() => void refresh()} />
+      )}
+      {section === "fotos" && <MediaEditor id={id} company={c} />}
+      {section === "horarios" && <HoursEditor id={id} />}
+      {section === "servicos" && <ItemsEditor id={id} kind="services" />}
+      {section === "promocoes" && <ItemsEditor id={id} kind="promotions" />}
+    </div>
   );
 }

@@ -89,19 +89,39 @@ it('Storage policies deny unpublished photos to public and other owners', async 
     ),
   ).rejects.toThrow();
 });
-it('database rejects photo/category quotas without relying on API', async () => {
-  await db.run(a, (s) =>
-    s.query('insert into company_categories(company_id,category_id) values($1,$2)', [
-      company,
-      category,
-    ]),
-  );
+it('plan quotas are paused (migration 006) but availability and category-status checks still apply at the database level', async () => {
+  // Migration 006 intentionally paused subscription-based resource quotas: a second
+  // category must now be accepted even without a paid plan.
   const other = (
     await db.pg.query<{ id: string }>('select id from categories where id<>$1 limit 1', [category])
   ).rows[0]!.id;
   await expect(
     db.run(a, (s) =>
       s.query('insert into company_categories(company_id,category_id) values($1,$2)', [
+        company,
+        other,
+      ]),
+    ),
+  ).resolves.toBeDefined();
+  // Retained by migration 006: an inactive category can never be linked to a company.
+  const inactive = randomUUID();
+  await db.pg.query(
+    "insert into categories(id,name,slug,is_active) values($1,'Inativa','inativa-teste',false)",
+    [inactive],
+  );
+  await expect(
+    db.run(a, (s) =>
+      s.query('insert into company_categories(company_id,category_id) values($1,$2)', [
+        company,
+        inactive,
+      ]),
+    ),
+  ).rejects.toThrow();
+  // Retained by migration 006: a resource row can never be moved to a different company.
+  await expect(
+    db.run(a, (s) =>
+      s.query('update company_categories set company_id=$1 where company_id=$2 and category_id=$3', [
+        randomUUID(),
         company,
         other,
       ]),

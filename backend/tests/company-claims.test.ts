@@ -92,9 +92,12 @@ describe('Company claims (resgatar empresa)', () => {
       .expect(400);
   });
   it('blocks a claim on an already-owned company', async () => {
+    // A one-off owner (migration 008 caps each account at one active company) so this
+    // company keeps its owner_id permanently, without consuming `owner`'s single slot.
+    const soleOwner = await db.user();
     const created = await request(app)
       .post('/api/companies')
-      .set('Authorization', bearer(owner))
+      .set('Authorization', bearer(soleOwner))
       .send({
         name: 'Empresa Com Dono',
         short_description: 'Descrição curta',

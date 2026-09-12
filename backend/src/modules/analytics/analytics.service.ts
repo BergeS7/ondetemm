@@ -4,7 +4,7 @@ import type { CompanyService } from '../companies/companies.service.js';
 import type { EventInput } from './analytics.schemas.js';
 import { DeduplicationService } from './deduplication.service.js';
 import { analyticsRepository } from './analytics.repository.js';
-
+import { PlanService } from '../plans/plans.service.js';
 import { NotFoundError, ValidationError } from '../../shared/errors/index.js';
 const fields: Record<string, string> = {
   PROFILE_VIEW: 'profileViews',
@@ -56,7 +56,10 @@ export class AnalyticsService {
     await this.companies.access(actor, id);
     const days = Number(period.slice(0, -1));
     return this.db.run('system', async (s) => {
-
+      // Every active company keeps a 7-day baseline regardless of plan; longer
+      // history windows require the plan's analytics_days entitlement.
+      if (actor.role !== 'ADMIN')
+        await new PlanService().require(s, id, 'analytics_days', days, 7);
       const result = await analyticsRepository.summary(s, id, days),
         totals = empty();
       for (const r of result.totals) {
