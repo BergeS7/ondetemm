@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { actor, controller, param } from '../../shared/utils/http.js';
 import { pagination, text } from '../../shared/utils/validation.js';
 import { requireRole } from '../../middlewares/auth.js';
-import { companySchema } from '../companies/companies.schemas.js';
+import { adminCompanySchema } from '../companies/companies.schemas.js';
 import type { AdminService } from './admin.service.js';
 export function adminRoutes(s: AdminService, guard: RequestHandler) {
   const r = Router();
@@ -32,7 +32,7 @@ export function adminRoutes(s: AdminService, guard: RequestHandler) {
   );
   r.post(
     '/companies',
-    controller((req) => s.createUnclaimedCompany(actor(req), companySchema.parse(req.body)), 201),
+    controller((req) => s.createUnclaimedCompany(actor(req), adminCompanySchema.parse(req.body)), 201),
   );
   r.post(
     '/companies/:id/approve',

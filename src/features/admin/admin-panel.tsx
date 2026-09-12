@@ -10,6 +10,8 @@ import {
   inputClass,
 } from "@/components/site-shell";
 import { CompanyForm } from "@/features/companies/company-form";
+import { CompanyManager } from "@/features/companies/company-manager";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function AdminAccess({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -70,7 +72,8 @@ export function AdminPanel() {
   const [action, setAction] = useState<Action | null>(null),
     [reason, setReason] = useState(""),
     [notice, setNotice] = useState(""),
-    [creating, setCreating] = useState(false);
+    [creating, setCreating] = useState(false),
+    [managing, setManaging] = useState<string | null>(null);
   const key = ["private", user?.id, "admin"];
   const dashboard = useQuery({
     queryKey: [...key, "dashboard"],
@@ -201,14 +204,19 @@ export function AdminPanel() {
           {creating && (
             <div className="mb-8">
               <p className="mb-3 text-sm text-muted-foreground">
-                A empresa é publicada sem proprietário e fica disponível para reivindicação pelo
-                responsável do negócio.
+                A empresa é criada sem proprietário e fica disponível para reivindicação pelo
+                responsável do negócio assim que for aprovada. Ela entra na fila de "Aguardando
+                aprovação" para revisão antes de ficar visível na busca pública.
               </p>
               <CompanyForm
                 mode="admin"
                 onSaved={() => {
                   setCreating(false);
-                  setNotice("Empresa criada e publicada. Ela já pode ser reivindicada.");
+                  setNotice(
+                    "Empresa criada e enviada para aprovação. Revise-a na aba de empresas antes de publicar.",
+                  );
+                  setStatus("PENDING_APPROVAL");
+                  setPage(1);
                   void cache.invalidateQueries({ queryKey: key });
                 }}
               />
@@ -256,6 +264,12 @@ export function AdminPanel() {
                         <p className="mt-3 text-sm text-danger">Motivo: {c.rejection_reason}</p>
                       )}
                       <div className="mt-4 flex flex-wrap gap-3">
+                        <button
+                          className="rounded-lg border px-4 py-2"
+                          onClick={() => setManaging(c.id)}
+                        >
+                          Gerenciar cadastro
+                        </button>
                         {c.status === "PENDING_APPROVAL" && (
                           <>
                             <button
@@ -489,6 +503,14 @@ export function AdminPanel() {
           </form>
         </div>
       )}
+      <Dialog open={!!managing} onOpenChange={(open) => !open && setManaging(null)}>
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gerenciar cadastro</DialogTitle>
+          </DialogHeader>
+          {managing && <CompanyManager id={managing} />}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
