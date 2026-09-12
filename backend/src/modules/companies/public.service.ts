@@ -18,6 +18,9 @@ export class PublicCompanyService {
       const canonical = `${this.site}/${String(company.state_code).toLowerCase()}/${company.city_slug}/${company.slug}`;
       const title = `${company.name} em ${company.city_name} - ${company.state_code} | Onde Tem`;
       const description = String(company.short_description);
+      // Social crawlers need an absolute image URL; company.cover_url is stored as the
+      // "/api/images/:id" path served from the same origin as PUBLIC_SITE_URL.
+      const absoluteImage = company.cover_url ? `${this.site}${String(company.cover_url)}` : null;
       return {
         company,
         categories,
@@ -30,7 +33,7 @@ export class PublicCompanyService {
           title,
           description,
           canonical,
-          openGraph: { title, description, url: canonical, image: company.cover_url },
+          openGraph: { title, description, url: canonical, image: absoluteImage },
           schemaOrg: {
             '@context': 'https://schema.org',
             '@type': 'LocalBusiness',

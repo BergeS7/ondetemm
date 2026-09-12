@@ -85,6 +85,13 @@ export interface PublicProfile {
     is_closed: boolean;
   }>;
   openStatus: "OPEN" | "CLOSED";
+  seo?: {
+    title: string;
+    description: string;
+    canonical: string;
+    openGraph: { title: string; description: string; url: string; image: string | null };
+    schemaOrg: Record<string, unknown>;
+  };
 }
 const money = (value: number) =>
   Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -346,6 +353,14 @@ export function CompanyProfileView({
   }
   return (
     <div className="company-profile">
+      {data.seo && (
+        <script
+          type="application/ld+json"
+          // Structured data built server-side from real company fields only (public.service.ts);
+          // never fabricated ratings, prices or hours that the business hasn't provided.
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(data.seo.schemaOrg) }}
+        />
+      )}
       <svg width="0" height="0" aria-hidden="true" style={{ position: "absolute" }}>
         <defs>
           <linearGradient id="profile-instagram-gradient" x1="0" y1="1" x2="1" y2="0">

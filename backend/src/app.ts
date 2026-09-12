@@ -23,6 +23,8 @@ import { searchRoutes } from './modules/search/search.routes.js';
 import { SearchService } from './modules/search/search.service.js';
 import { publicRoutes } from './modules/companies/public.routes.js';
 import { PublicCompanyService } from './modules/companies/public.service.js';
+import { sitemapRoutes } from './modules/companies/sitemap.routes.js';
+import { SitemapService } from './modules/companies/sitemap.service.js';
 import { uploadRoutes } from './modules/uploads/uploads.routes.js';
 import { UploadService } from './modules/uploads/uploads.service.js';
 import { analyticsRoutes } from './modules/analytics/analytics.routes.js';
@@ -77,6 +79,7 @@ export function createApp(config: Config, deps: Dependencies) {
   app.use((req, res, next) => {
     const id = randomUUID(),
       start = Date.now();
+    res.locals['requestId'] = id;
     res.set('X-Request-Id', id);
     res.on('finish', () =>
       logger.info(
@@ -122,6 +125,7 @@ export function createApp(config: Config, deps: Dependencies) {
     promotionRoutes(deps.db, companies, guard),
     searchRoutes(new SearchService(deps.db)),
     publicRoutes(new PublicCompanyService(deps.db, config.PUBLIC_SITE_URL)),
+    sitemapRoutes(new SitemapService(deps.db, config.PUBLIC_SITE_URL)),
     uploadRoutes(new UploadService(deps.db, companies, deps.storage), guard),
     analyticsRoutes(
       new AnalyticsService(deps.db, companies, config.IP_HASH_SECRET),
@@ -161,7 +165,13 @@ export function createApp(config: Config, deps: Dependencies) {
     ),
   );
   app.use((_req, res) =>
-    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Rota não encontrada' } }),
+    res.status(404).json({
+      error: {
+        code: 'NOT_FOUND',
+        message: 'Rota não encontrada',
+        requestId: res.locals['requestId'] as string | undefined,
+      },
+    }),
   );
   app.use(errorHandler(logger));
   return app;

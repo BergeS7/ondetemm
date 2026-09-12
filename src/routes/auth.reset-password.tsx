@@ -4,7 +4,10 @@ import { api, message } from "@/lib/api";
 import { useAuth } from "@/features/auth/auth-provider";
 import { consumeSessionLink } from "@/features/auth/session-link";
 import { SiteShell, ErrorNotice, Loading, inputClass, buttonClass } from "@/components/site-shell";
-export const Route = createFileRoute("/auth/reset-password")({ component: Page });
+export const Route = createFileRoute("/auth/reset-password")({
+  head: () => ({ meta: [{ name: "robots", content: "noindex, nofollow" }] }),
+  component: Page,
+});
 function Page() {
   const auth = useAuth(),
     started = useRef(false);

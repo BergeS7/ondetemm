@@ -4,7 +4,10 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { consumeSessionLink } from "@/features/auth/session-link";
 import { SiteShell, PageLoading, ErrorNotice } from "@/components/site-shell";
 import { message } from "@/lib/api";
-export const Route = createFileRoute("/auth/callback")({ component: Page });
+export const Route = createFileRoute("/auth/callback")({
+  head: () => ({ meta: [{ name: "robots", content: "noindex, nofollow" }] }),
+  component: Page,
+});
 function Page() {
   const auth = useAuth(),
     navigate = useNavigate(),

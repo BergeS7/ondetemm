@@ -1,15 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, Trash2, Plus, Save } from "lucide-react";
-import {
-  api,
-  allPages,
-  message,
-  type Company,
-  type Page,
-  type State,
-  type City,
-} from "@/lib/api";
+import { api, allPages, message, type Company, type Page, type State, type City } from "@/lib/api";
 import { useAuth } from "@/features/auth/auth-provider";
 import { Loading, ErrorNotice, buttonClass, inputClass } from "@/components/site-shell";
 import { CompanyForm } from "./company-form";
