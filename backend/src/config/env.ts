@@ -23,5 +23,17 @@ const schema = z.object({
 });
 export type Config = z.infer<typeof schema>;
 export function loadConfig(): Config {
-  return schema.parse(process.env);
+  const result = schema.safeParse(process.env);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((i) => `  - ${i.path.join('.')}: ${i.message}`)
+      .join('\n');
+    // Never echo the invalid values themselves — only which variables are missing/invalid
+    // and why, so secrets never end up in startup logs.
+    console.error(
+      `Configuração inválida. Verifique as variáveis de ambiente do backend:\n${issues}`,
+    );
+    process.exit(1);
+  }
+  return result.data;
 }

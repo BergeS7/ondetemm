@@ -5,6 +5,7 @@ import { AppError } from '../shared/errors/index.js';
 export const errorHandler =
   (logger: Logger): ErrorRequestHandler =>
   (error: unknown, _req, res, _next) => {
+    const requestId = res.locals['requestId'] as string | undefined;
     let status = 500,
       code = 'INTERNAL_ERROR',
       message = 'Erro interno do servidor';
@@ -50,6 +51,6 @@ export const errorHandler =
         message = 'Upload inválido';
       }
     }
-    if (status >= 500) logger.error({ err: error, code }, 'Request failed');
-    res.status(status).json({ error: { code, message } });
+    if (status >= 500) logger.error({ err: error, code, requestId }, 'Request failed');
+    res.status(status).json({ error: { code, message, requestId } });
   };
