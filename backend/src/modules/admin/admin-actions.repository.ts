@@ -23,3 +23,9 @@ export function auditSuspension(sql: Sql, values: unknown[] = []) {
     values,
   );
 }
+export function auditLog(sql: Sql, values: unknown[] = []) {
+  return sql.query(
+    'insert into public.admin_audit_logs(admin_id,action,entity_type,entity_id,metadata) values($1,$2,$3,$4,$5)',
+    values,
+  );
+}

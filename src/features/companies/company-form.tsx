@@ -11,7 +11,7 @@ import {
   type Category,
 } from "@/lib/api";
 import { useAuth } from "@/features/auth/auth-provider";
-import { buttonClass, inputClass, ErrorNotice, Loading } from "@/components/site-shell";
+import { buttonClass, inputClass, ErrorNotice, PageLoading } from "@/components/site-shell";
 
 export function normalizePhone(value: string) {
   const digits = value.replace(/\D/g, "");
@@ -31,6 +31,29 @@ export const companyInputSchema = z.object({
   street: z.string().trim().min(2, "Informe o endereço").max(200),
   number: z.string().trim().max(20),
   neighborhood: z.string().trim().max(120),
+  phone: z
+    .string()
+    .default("")
+    .transform(normalizePhone)
+    .pipe(z.string().regex(/^(?:|\d{10,15})$/, "Informe um telefone com DDD")),
+  instagram: z
+    .string()
+    .trim()
+    .default("")
+    .transform((v) =>
+      v && !/^https?:\/\//i.test(v) ? `https://www.instagram.com/${v.replace(/^@/, "")}/` : v,
+    )
+    .refine((v) => {
+      if (!v) return true;
+      try {
+        const u = new URL(v);
+        return (
+          u.protocol === "https:" && ["instagram.com", "www.instagram.com"].includes(u.hostname)
+        );
+      } catch {
+        return false;
+      }
+    }, "Informe o Instagram da empresa"),
   whatsapp: z
     .string()
     .transform(normalizePhone)
@@ -40,9 +63,11 @@ export const companyInputSchema = z.object({
 export function CompanyForm({
   initial,
   onSaved,
+  mode = "owner",
 }: {
   initial?: Company;
   onSaved: (company: Company) => void;
+  mode?: "owner" | "admin";
 }) {
   const auth = useAuth(),
     cache = useQueryClient();
@@ -56,6 +81,8 @@ export function CompanyForm({
     street: initial?.street ?? "",
     number: initial?.number ?? "",
     neighborhood: initial?.neighborhood ?? "",
+    phone: initial?.phone ?? "",
+    instagram: initial?.instagram ?? "",
     whatsapp: initial?.whatsapp ?? "",
   });
   const [error, setError] = useState(""),
@@ -75,11 +102,14 @@ export function CompanyForm({
   });
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
-      api.request<Company>(initial ? `/companies/${initial.id}` : "/companies", {
-        method: initial ? "PATCH" : "POST",
-        authenticated: true,
-        body,
-      }),
+      api.request<Company>(
+        initial ? `/companies/${initial.id}` : mode === "admin" ? "/admin/companies" : "/companies",
+        {
+          method: initial ? "PATCH" : "POST",
+          authenticated: true,
+          body,
+        },
+      ),
     onSuccess: async (company) => {
       await cache.invalidateQueries({ queryKey: ["private", auth.user?.id] });
       setNotice("Cadastro salvo com sucesso.");
@@ -100,6 +130,8 @@ export function CompanyForm({
     try {
       await save.mutateAsync({
         ...fields,
+        phone: fields.phone || null,
+        instagram: fields.instagram || null,
         number: fields.number || null,
         neighborhood: fields.neighborhood || null,
         category_ids: [...new Set([category, ...(initial?.category_ids?.slice(1) ?? [])])],
@@ -127,6 +159,25 @@ export function CompanyForm({
           Preencha os dados que seus clientes precisam para encontrar você.
         </p>
       </div>
+      <label className="block text-sm font-medium">
+        Telefone para ligações
+        <input
+          className={inputClass + " mt-1"}
+          type="tel"
+          value={form.phone}
+          onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+          placeholder="(98) 99999-9999"
+        />
+      </label>
+      <label className="block text-sm font-medium">
+        Instagram
+        <input
+          className={inputClass + " mt-1"}
+          value={form.instagram}
+          onChange={(e) => setForm((f) => ({ ...f, instagram: e.target.value }))}
+          placeholder="@suaempresa"
+        />
+      </label>
       {error && <ErrorNotice>{error}</ErrorNotice>}
       {notice && (
         <p role="status" className="rounded-lg bg-brand-soft p-3 text-sm text-brand">
@@ -296,7 +347,9 @@ export function CompanyForm({
           Voltar para minhas empresas
         </a>
         <p className="w-full text-xs text-muted-foreground">
-          O cadastro será salvo para você revisar antes de enviar para aprovação.
+          {initial?.status === "ACTIVE"
+            ? "As alterações salvas atualizam o perfil da sua empresa."
+            : "Salve o cadastro e envie para aprovação no painel."}
         </p>
       </div>
     </form>
@@ -311,7 +364,7 @@ export function CompanyEditor({ id }: { id: string }) {
       api.request<Company>(`/companies/${id}`, { authenticated: true, signal }),
     enabled: !!auth.user,
   });
-  if (company.isPending) return <Loading text="Carregando cadastro…" />;
+  if (company.isPending) return <PageLoading text="Carregando cadastro" />;
   if (company.error)
     return (
       <ErrorNotice onRetry={() => void company.refetch()}>{message(company.error)}</ErrorNotice>

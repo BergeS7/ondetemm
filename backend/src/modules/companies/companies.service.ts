@@ -1,7 +1,8 @@
 import * as queries from './company-actions.repository.js';
+import * as claimQueries from './company-claims.repository.js';
 import { randomUUID } from 'node:crypto';
 import type { Actor, Database, Page, Sql } from '../../shared/types/index.js';
-import { ForbiddenError, NotFoundError, ValidationError } from '../../shared/errors/index.js';
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../../shared/errors/index.js';
 import { companiesRepository as repo } from './companies.repository.js';
 import { slugify } from '../../shared/utils/validation.js';
 export class CompanyService {
@@ -19,6 +20,8 @@ export class CompanyService {
   }
   create(actor: Actor, input: Record<string, unknown>) {
     return this.db.run(actor, async (sql) => {
+      const existing = await queries.findOwnedCompany(sql, [actor.id]);
+      if (existing.rows.length) throw new ConflictError('Você já possui uma empresa cadastrada.');
       const { category_ids, ...fields } = input;
       let slug = slugify(String(fields.name));
       if (!slug) throw new ValidationError('Nome não gera um slug válido');
@@ -56,6 +59,9 @@ export class CompanyService {
   }
   mine(actor: Actor, page: Page) {
     return this.db.run(actor, (sql) => repo.mine(sql, actor.id, page));
+  }
+  claim(actor: Actor, id: string, message?: string) {
+    return this.db.run(actor, (sql) => claimQueries.createClaim(sql, [id, message ?? null]));
   }
   async publicExists(id: string) {
     return this.db.run(undefined, async (sql) => {

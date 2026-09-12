@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { actor, controller, param } from '../../shared/utils/http.js';
 import { pagination, text } from '../../shared/utils/validation.js';
 import { requireRole } from '../../middlewares/auth.js';
+import { companySchema } from '../companies/companies.schemas.js';
 import type { AdminService } from './admin.service.js';
 export function adminRoutes(s: AdminService, guard: RequestHandler) {
   const r = Router();
@@ -30,6 +31,10 @@ export function adminRoutes(s: AdminService, guard: RequestHandler) {
     }),
   );
   r.post(
+    '/companies',
+    controller((req) => s.createUnclaimedCompany(actor(req), companySchema.parse(req.body)), 201),
+  );
+  r.post(
     '/companies/:id/approve',
     controller((req) => s.moderate(actor(req), param(req), 'ACTIVE')),
   );
@@ -50,6 +55,30 @@ export function adminRoutes(s: AdminService, guard: RequestHandler) {
   r.post(
     '/companies/:id/suspend',
     controller((req) => s.moderate(actor(req), param(req), 'SUSPENDED')),
+  );
+  r.get(
+    '/company-claims',
+    controller((req) => {
+      const q = pagination.extend({ status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional() }).parse(req.query);
+      return s.companyClaims(actor(req), q, q.status);
+    }),
+  );
+  r.post(
+    '/company-claims/:id/approve',
+    controller((req) => s.approveCompanyClaim(actor(req), param(req))),
+  );
+  r.post(
+    '/company-claims/:id/reject',
+    controller((req) =>
+      s.rejectCompanyClaim(
+        actor(req),
+        param(req),
+        z
+          .object({ reason: text(1000).optional() })
+          .strict()
+          .parse(req.body).reason,
+      ),
+    ),
   );
   r.get(
     '/users',

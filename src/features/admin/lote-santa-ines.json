@@ -1,0 +1,117 @@
+[
+  {
+    "nome": "Magazine Luiza",
+    "fonte": "https://lojas.magazineluiza.com.br/filiais/1242/santa-ines",
+    "observacao": "Telefone omitido: o localizador oficial apresenta numeração incompleta.",
+    "payload": {
+      "name": "Magazine Luiza",
+      "short_description": "Loja da rede Magazine Luiza no Centro de Santa Inês.",
+      "description": "Unidade do Magazine Luiza situada na Rua do Comércio, no Centro de Santa Inês, Maranhão. Integra a rede de varejo Magazine Luiza.",
+      "state_id": "da8d1c6d-b1ca-4004-a54f-b400d792ceff",
+      "city_id": "c1dea757-305c-428e-9099-09c3b455a48c",
+      "category_ids": [
+        "c98d5389-6309-4150-b5b5-56e756ca9a52"
+      ],
+      "street": "Rua do Comércio",
+      "number": "671",
+      "neighborhood": "Centro",
+      "website": "https://lojas.magazineluiza.com.br/filiais/1242/santa-ines"
+    }
+  },
+  {
+    "nome": "Maranhão Motos Honda",
+    "fonte": "https://www.maranhaomotos.com.br/lojas",
+    "observacao": "Endereço, telefone e WhatsApp confirmados no site da concessionária.",
+    "payload": {
+      "name": "Maranhão Motos Honda",
+      "short_description": "Concessionária Honda com venda de motos, peças e oficina em Santa Inês.",
+      "description": "A Maranhão Motos atende em Santa Inês com motocicletas Honda, peças, acessórios e serviços de oficina. A unidade está localizada na Avenida Castelo Branco, no bairro Santo Antônio.",
+      "state_id": "da8d1c6d-b1ca-4004-a54f-b400d792ceff",
+      "city_id": "c1dea757-305c-428e-9099-09c3b455a48c",
+      "category_ids": [
+        "60587346-3372-4a79-9bf4-1a7b003d4149"
+      ],
+      "street": "Avenida Castelo Branco",
+      "number": "2277",
+      "neighborhood": "Santo Antônio",
+      "phone": "9836531455",
+      "whatsapp": "5598982671413",
+      "website": "https://www.maranhaomotos.com.br/"
+    }
+  },
+  {
+    "nome": "Lojas Noroeste",
+    "fonte": "https://lojasnoroeste.com.br/lojas-2/",
+    "observacao": "Endereço confirmado no localizador oficial; contatos não confirmados foram omitidos.",
+    "payload": {
+      "name": "Lojas Noroeste",
+      "short_description": "Loja de moda e vestuário da rede Noroeste em Santa Inês.",
+      "description": "Unidade da rede Lojas Noroeste localizada na Rua do Comércio, no Centro de Santa Inês, Maranhão. Atua no comércio de moda e vestuário.",
+      "state_id": "da8d1c6d-b1ca-4004-a54f-b400d792ceff",
+      "city_id": "c1dea757-305c-428e-9099-09c3b455a48c",
+      "category_ids": [
+        "675b69f0-31e6-42d7-ab57-275cd12a42f3"
+      ],
+      "street": "Rua do Comércio",
+      "number": "219",
+      "neighborhood": "Centro",
+      "website": "https://lojasnoroeste.com.br/"
+    }
+  },
+  {
+    "nome": "Magazine Liliani",
+    "fonte": "https://www.econodata.com.br/consulta-empresa/11590296004909-magazine-liliani-sa",
+    "observacao": "Endereço corroborado pela lista de pontos de venda da parceira Assurant. Telefone e WhatsApp omitidos.",
+    "payload": {
+      "name": "Magazine Liliani",
+      "short_description": "Loja de móveis e eletrodomésticos da rede Liliani em Santa Inês.",
+      "description": "A Magazine Liliani possui unidade na Rua do Comércio, em Santa Inês, Maranhão. A rede atua no varejo de móveis e eletrodomésticos.",
+      "state_id": "da8d1c6d-b1ca-4004-a54f-b400d792ceff",
+      "city_id": "c1dea757-305c-428e-9099-09c3b455a48c",
+      "category_ids": [
+        "c98d5389-6309-4150-b5b5-56e756ca9a52"
+      ],
+      "street": "Rua do Comércio",
+      "number": "144",
+      "neighborhood": "Centro",
+      "website": "https://www.liliani.com.br/"
+    }
+  },
+  {
+    "nome": "Mix Mateus",
+    "fonte": "https://br.todosnegocios.com/pt/mix-mateus-santa-in%C3%AAs-98-3202-1146",
+    "observacao": "Endereço obtido em diretório comercial; presença do Grupo na cidade documentada em seu site institucional. Contatos omitidos por falta de confirmação direta.",
+    "payload": {
+      "name": "Mix Mateus",
+      "short_description": "Atacarejo do Grupo Mateus em Santa Inês.",
+      "description": "Unidade Mix Mateus localizada na BR-316, no bairro Canaã, em Santa Inês, Maranhão. A bandeira de atacarejo do Grupo Mateus atende consumidores e comerciantes.",
+      "state_id": "da8d1c6d-b1ca-4004-a54f-b400d792ceff",
+      "city_id": "c1dea757-305c-428e-9099-09c3b455a48c",
+      "category_ids": [
+        "85264bc2-86e7-4506-ae6c-be92587dac40"
+      ],
+      "street": "BR-316",
+      "number": "32",
+      "neighborhood": "Canaã",
+      "website": "https://grupomateus.com.br/mix-mateus/"
+    }
+  },
+  {
+    "nome": "Farmácias Pague Menos",
+    "fonte": "https://www.portafolhetos.com.br/ofertas/santa-ines/pague-menos/",
+    "observacao": "Endereço corroborado por lista de lojas e diretório de ofertas. Telefones e WhatsApp não confirmados foram omitidos.",
+    "payload": {
+      "name": "Farmácias Pague Menos",
+      "short_description": "Unidade da rede de farmácias Pague Menos no Centro de Santa Inês.",
+      "description": "Farmácia da rede Pague Menos localizada na Rua do Comércio, no Centro de Santa Inês, Maranhão. Atua no varejo farmacêutico.",
+      "state_id": "da8d1c6d-b1ca-4004-a54f-b400d792ceff",
+      "city_id": "c1dea757-305c-428e-9099-09c3b455a48c",
+      "category_ids": [
+        "a439ae52-1075-4632-b637-a673bc7ccb6c"
+      ],
+      "street": "Rua do Comércio",
+      "number": "100",
+      "neighborhood": "Centro"
+    }
+  }
+]

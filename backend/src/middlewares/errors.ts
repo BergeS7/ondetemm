@@ -15,7 +15,7 @@ export const errorHandler =
       code = 'VALIDATION_ERROR';
       message = error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
     } else if (typeof error === 'object' && error) {
-      const e = error as { code?: string; type?: string; status?: number };
+      const e = error as { code?: string; type?: string; status?: number; message?: string };
       if (e.code === '23505') {
         status = 409;
         code = 'CONFLICT';
@@ -24,6 +24,10 @@ export const errorHandler =
         status = 403;
         code = 'FORBIDDEN';
         message = 'Acesso não permitido';
+      } else if (e.code === '23514' && e.message === 'Plan limit reached') {
+        status = 400;
+        code = 'PLAN_LIMIT_REACHED';
+        message = 'O limite deste recurso no plano foi atingido. Remova um item existente antes de adicionar outro.';
       } else if (['23514', '23503', '22P02'].includes(e.code ?? '')) {
         status = 400;
         code = 'VALIDATION_ERROR';

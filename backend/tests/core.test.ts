@@ -137,6 +137,14 @@ describe('Onde Tem core integration: Express + PostgreSQL/RLS', () => {
       .attach('file', image, { filename: 'photo.png', contentType: 'image/png' })
       .expect(201);
     expect(uploaded.body.url).toMatch(/^\/api\/images\//);
+    const media = await request(app).get(`/api/me/companies/${companyId}/images`)
+      .set('Authorization', bearer(a)).expect(200);
+    expect(media.body.data.some((item: {id:string}) => item.id === uploaded.body.id)).toBe(true);
+    expect(media.body.data[0].preview_url).toBeTruthy();
+    expect(media.body.data[0].storage_path).toBeUndefined();
+    await request(app).get(`/api/me/companies/${companyId}/images`).expect(401);
+    await request(app).get(`/api/me/companies/${companyId}/images`)
+      .set('Authorization', bearer(b)).expect(403);
     await request(app)
       .post(`/api/companies/${companyId}/images`)
       .set('Authorization', bearer(b))
@@ -219,7 +227,7 @@ describe('Onde Tem core integration: Express + PostgreSQL/RLS', () => {
       .send({ ...body, event_type: 'FAKE' })
       .expect(400);
   });
-  it('analytics rejects non-owner and free plan, admin can inspect', async () => {
+  it('analytics allows owner without paid plan and rejects non-owner', async () => {
     await request(app)
       .get(`/api/companies/${companyId}/analytics`)
       .set('Authorization', bearer(b))
@@ -227,7 +235,7 @@ describe('Onde Tem core integration: Express + PostgreSQL/RLS', () => {
     await request(app)
       .get(`/api/companies/${companyId}/analytics`)
       .set('Authorization', bearer(a))
-      .expect(403);
+      .expect(200);
     const r = await request(app)
       .get(`/api/companies/${companyId}/analytics`)
       .set('Authorization', bearer(admin))
@@ -235,20 +243,26 @@ describe('Onde Tem core integration: Express + PostgreSQL/RLS', () => {
     expect(r.body.profileViews).toBe(1);
     expect(r.body.whatsappClicks).toBe(1);
   });
-  it('free plan cannot insert services or promotions through API or SQL', async () => {
-    await request(app)
-      .post(`/api/companies/${companyId}/services`)
+  it('allows services without a paid plan', async () => {
+    await request(app).post(`/api/companies/${companyId}/services`)
       .set('Authorization', bearer(a))
-      .send({ name: 'Churrasco', price_type: 'CONTACT' })
-      .expect(400);
-    await expect(
-      db.run(a, (s) =>
-        s.query('insert into company_services(company_id,name) values($1,$2)', [
-          companyId,
-          'Bypass',
-        ]),
-      ),
-    ).rejects.toThrow();
+      .send({name:'Churrasco',price_type:'CONTACT'}).expect(201);
+    const listed=await request(app).get(`/api/companies/${companyId}/services`).expect(200);
+    expect(listed.body.data.some((item: {name:string})=>item.name==='Churrasco')).toBe(true);
+  });
+  it('public metrics expose only 30-day counts and track Instagram and phone clicks', async () => {
+    for (const event_type of ['INSTAGRAM_CLICK', 'PHONE_CLICK']) {
+      const session_id = randomUUID();
+      const event = { company_id: companyId, event_type, session_id };
+      await request(app).post('/api/events').send(event).expect(202);
+      const duplicate = await request(app).post('/api/events').send(event).expect(202);
+      expect(duplicate.body.counted).toBe(false);
+    }
+    await db.pg.query("insert into interaction_events(company_id,event_type,created_at) values($1,'INSTAGRAM_CLICK',now()-interval '31 days')", [companyId]);
+    const result = await request(app).get(`/api/public/companies/${companyId}/analytics`).expect(200);
+    expect(result.body).toEqual({period:'30d',profileViews:1,whatsappClicks:1,phoneClicks:1,instagramClicks:1});
+    await request(app).get('/api/public/companies/not-an-id/analytics').expect(400);
+    await request(app).get(`/api/public/companies/${randomUUID()}/analytics`).expect(404);
   });
   it('hours calculate overnight opening in city timezone', async () => {
     await request(app)
@@ -270,6 +284,7 @@ describe('Onde Tem core integration: Express + PostgreSQL/RLS', () => {
       .set('Authorization', bearer(admin))
       .expect(200);
     await request(app).get(`/api/public/ma/santa-ines/companies/${slug}`).expect(404);
+    await request(app).get(`/api/public/companies/${companyId}/analytics`).expect(404);
     const r = await request(app).get('/api/search?q=churrascaria').expect(200);
     expect(r.body.data).toHaveLength(0);
     const direct = await db.run(undefined, (s) =>
@@ -278,3 +293,6 @@ describe('Onde Tem core integration: Express + PostgreSQL/RLS', () => {
     expect(direct.rows).toHaveLength(0);
   });
 });
+
+
+

@@ -7,10 +7,12 @@ export const Route = createFileRoute("/entrar")({
 });
 function Page() {
   const navigate = useNavigate();
+  const next = new URLSearchParams(window.location.search).get("next");
+  const destination = next && next.startsWith("/") && !next.startsWith("//") ? next : "/painel";
   return (
     <SiteShell>
       <div className="px-4 py-12">
-        <AuthForm mode="login" onSuccess={() => void navigate({ to: "/painel" })} />
+        <AuthForm mode="login" onSuccess={() => void navigate({ to: destination })} />
       </div>
     </SiteShell>
   );

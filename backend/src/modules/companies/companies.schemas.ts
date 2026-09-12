@@ -44,3 +44,8 @@ export const companyPatch = companySchema
   .partial()
   .strict()
   .refine((v) => Object.keys(v).length > 0, 'Informe campos para atualizar');
+export const claimSchema = z
+  .object({
+    message: text(1000).optional(),
+  })
+  .strict();

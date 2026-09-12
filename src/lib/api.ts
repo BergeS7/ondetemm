@@ -43,9 +43,51 @@ export interface Company {
   phone: string | null;
   email: string | null;
   website: string | null;
+  instagram?: string | null;
   status: "DRAFT" | "PENDING_APPROVAL" | "ACTIVE" | "REJECTED" | "SUSPENDED";
   rejection_reason: string | null;
   category_ids?: string[];
+  logo_url?: string | null;
+  cover_url?: string | null;
+  verified?: boolean;
+  average_rating?: string | number;
+  reviews_count?: number;
+}
+export interface Plan {
+  id: string;
+  code: "FREE" | "FEATURED" | "PREMIUM";
+  name: string;
+  description: string;
+  price_monthly: string | number;
+  limits: Record<string, unknown>;
+  ranking_weight: number;
+}
+export interface Subscription {
+  id: string;
+  company_id: string;
+  plan_id: string;
+  provider: string;
+  provider_subscription_id: string | null;
+  status: "PENDING" | "ACTIVE" | "PAST_DUE" | "CANCELED";
+  amount: string | number;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  checkout_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface AnalyticsSummary {
+  profileViews: number;
+  whatsappClicks: number;
+  phoneClicks: number;
+  routeClicks: number;
+  instagramClicks: number;
+  websiteClicks: number;
+  promotionClicks: number;
+  period: string;
+  timezone: string;
+  series: Array<Record<string, unknown>>;
 }
 export interface SearchCompany {
   id: string;
@@ -102,7 +144,7 @@ export async function allPages<T>(path: string, signal?: AbortSignal): Promise<T
 }
 export function track(
   company_id: string,
-  event_type: "PROFILE_VIEW" | "WHATSAPP_CLICK" | "PHONE_CLICK",
+  event_type: "PROFILE_VIEW" | "WHATSAPP_CLICK" | "PHONE_CLICK" | "INSTAGRAM_CLICK" | "ROUTE_CLICK",
 ) {
   let session_id: string | undefined;
   try {
@@ -111,7 +153,7 @@ export function track(
   } catch {
     /* Tracking still accepts an anonymous event. */
   }
-  void api
+  return api
     .request("/events", { method: "POST", body: { company_id, event_type, session_id } })
     .catch(() => {
       /* A metrics failure must not block the contact link. */

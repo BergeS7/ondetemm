@@ -4,7 +4,7 @@ import type { CompanyService } from '../companies/companies.service.js';
 import type { EventInput } from './analytics.schemas.js';
 import { DeduplicationService } from './deduplication.service.js';
 import { analyticsRepository } from './analytics.repository.js';
-import { PlanService } from '../plans/plans.service.js';
+
 import { NotFoundError, ValidationError } from '../../shared/errors/index.js';
 const fields: Record<string, string> = {
   PROFILE_VIEW: 'profileViews',
@@ -56,7 +56,7 @@ export class AnalyticsService {
     await this.companies.access(actor, id);
     const days = Number(period.slice(0, -1));
     return this.db.run('system', async (s) => {
-      if (actor.role !== 'ADMIN') await new PlanService().require(s, id, 'analytics_days', days);
+
       const result = await analyticsRepository.summary(s, id, days),
         totals = empty();
       for (const r of result.totals) {
@@ -74,4 +74,21 @@ export class AnalyticsService {
       return { ...totals, period, timezone: result.timezone, series: [...dates.values()] };
     });
   }
+  publicSummary(id: string) {
+    return this.db.run('system', async (sql) => {
+      const result = await sql.query(
+        `select count(e.id) filter (where e.event_type='PROFILE_VIEW')::int as "profileViews",
+          count(e.id) filter (where e.event_type='WHATSAPP_CLICK')::int as "whatsappClicks",
+          count(e.id) filter (where e.event_type='PHONE_CLICK')::int as "phoneClicks",
+          count(e.id) filter (where e.event_type='INSTAGRAM_CLICK')::int as "instagramClicks"
+         from public.companies c left join public.interaction_events e
+           on e.company_id=c.id and e.created_at>=now()-interval '30 days'
+         where c.id=$1 and c.status='ACTIVE' and c.deleted_at is null group by c.id`,
+        [id],
+      );
+      if (!result.rows.length) throw new NotFoundError();
+      return { ...result.rows[0], period: '30d' };
+    });
+  }
 }
+

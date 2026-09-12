@@ -23,3 +23,11 @@ O proxy do Vite vale somente para desenvolvimento. Na hospedagem, configure um p
 Cadastro/login, confirmação de e-mail, recuperação de senha, painel do proprietário, cadastro/edição/envio de empresas para análise, catálogos reais, busca com filtros/paginação e perfil público com contato. O painel administrativo de aprovação, uploads e pagamentos ainda não têm telas nesta entrega; suas operações existentes continuam na API.
 
 Verificação: `npm run typecheck`, `npm test`, `npm run build`. Os testes do frontend usam API simulada para não criar contas ou enviar e-mails reais. O backend possui sua própria suíte: `cd backend` e `npm run check`. O lint geral do frontend tem pendências antigas de formatação CRLF nos arquivos originais.
+
+## Painel administrativo
+
+Acesse http://localhost:5173/admin após entrar com uma conta ADMIN. O menu Administração aparece apenas para esse perfil. Contas comuns recebem uma mensagem de acesso restrito; a API também exige ADMIN em todas as operações.
+
+O painel oferece resumo de empresas, pendências, usuários e assinaturas ativas; filtro e paginação de empresas; aprovação, rejeição com motivo e suspensão; consulta e suspensão de usuários (exceto a própria conta); e interações dos últimos 30 dias. As ações exigem confirmação antes do envio. A reativação de empresas/usuários ainda não é oferecida pela API existente.
+
+Para provisionar o primeiro administrador, crie a conta pelo site e, na pasta backend, execute `npm run admin:grant -- UUID_DO_USUARIO`. É necessário configurar MIGRATION_DATABASE_URL. Nenhuma conta é promovida automaticamente pela interface.

@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { text, url } from '../../shared/utils/validation.js';
+import { text, imageUrl } from '../../shared/utils/validation.js';
 export const serviceBase = z
   .object({
     name: text(160).min(2),
     description: text(3000).nullable().optional(),
     price: z.number().min(0).max(99999999).nullable().optional(),
     price_type: z.enum(['FIXED', 'STARTING_AT', 'CONTACT']).default('CONTACT'),
-    image_url: url.nullable().optional(),
+    image_url: imageUrl.nullable().optional(),
     is_active: z.boolean().default(true),
   })
   .strict();

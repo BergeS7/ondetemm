@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CadastrarRouteImport } from './routes/cadastrar'
 import { Route as EntrarRouteImport } from './routes/entrar'
 import { Route as PainelRouteImport } from './routes/painel'
@@ -18,11 +19,15 @@ import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as EmpresasNovaRouteImport } from './routes/empresas.nova'
 import { Route as StateCitySlugRouteImport } from './routes/$state.$city.$slug'
-import { Route as EmpresasIdEditarRouteImport } from './routes/empresas.$id.editar'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CadastrarRoute = CadastrarRouteImport.update({
@@ -65,14 +70,10 @@ const StateCitySlugRoute = StateCitySlugRouteImport.update({
   path: '/$state/$city/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EmpresasIdEditarRoute = EmpresasIdEditarRouteImport.update({
-  id: '/empresas/$id/editar',
-  path: '/empresas/$id/editar',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/cadastrar': typeof CadastrarRoute
   '/entrar': typeof EntrarRoute
   '/painel': typeof PainelRoute
@@ -81,10 +82,10 @@ export interface FileRoutesByFullPath {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/empresas/nova': typeof EmpresasNovaRoute
   '/$state/$city/$slug': typeof StateCitySlugRoute
-  '/empresas/$id/editar': typeof EmpresasIdEditarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/cadastrar': typeof CadastrarRoute
   '/entrar': typeof EntrarRoute
   '/painel': typeof PainelRoute
@@ -93,11 +94,11 @@ export interface FileRoutesByTo {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/empresas/nova': typeof EmpresasNovaRoute
   '/$state/$city/$slug': typeof StateCitySlugRoute
-  '/empresas/$id/editar': typeof EmpresasIdEditarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/cadastrar': typeof CadastrarRoute
   '/entrar': typeof EntrarRoute
   '/painel': typeof PainelRoute
@@ -106,12 +107,12 @@ export interface FileRoutesById {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/empresas/nova': typeof EmpresasNovaRoute
   '/$state/$city/$slug': typeof StateCitySlugRoute
-  '/empresas/$id/editar': typeof EmpresasIdEditarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/cadastrar'
     | '/entrar'
     | '/painel'
@@ -120,10 +121,10 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/empresas/nova'
     | '/$state/$city/$slug'
-    | '/empresas/$id/editar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/cadastrar'
     | '/entrar'
     | '/painel'
@@ -132,10 +133,10 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/empresas/nova'
     | '/$state/$city/$slug'
-    | '/empresas/$id/editar'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/cadastrar'
     | '/entrar'
     | '/painel'
@@ -144,11 +145,11 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/empresas/nova'
     | '/$state/$city/$slug'
-    | '/empresas/$id/editar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   CadastrarRoute: typeof CadastrarRoute
   EntrarRoute: typeof EntrarRoute
   PainelRoute: typeof PainelRoute
@@ -157,7 +158,6 @@ export interface RootRouteChildren {
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   EmpresasNovaRoute: typeof EmpresasNovaRoute
   StateCitySlugRoute: typeof StateCitySlugRoute
-  EmpresasIdEditarRoute: typeof EmpresasIdEditarRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -167,6 +167,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cadastrar': {
@@ -225,18 +232,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StateCitySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/empresas/$id/editar': {
-      id: '/empresas/$id/editar'
-      path: '/empresas/$id/editar'
-      fullPath: '/empresas/$id/editar'
-      preLoaderRoute: typeof EmpresasIdEditarRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   CadastrarRoute: CadastrarRoute,
   EntrarRoute: EntrarRoute,
   PainelRoute: PainelRoute,
@@ -245,7 +246,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   EmpresasNovaRoute: EmpresasNovaRoute,
   StateCitySlugRoute: StateCitySlugRoute,
-  EmpresasIdEditarRoute: EmpresasIdEditarRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

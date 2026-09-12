@@ -64,8 +64,8 @@ export class UploadService {
     try {
       buffer = await sharp(file.buffer, { limitInputPixels: 20000000, animated: false })
         .rotate()
-        .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 85 })
+        .resize({ width: type === 'COVER' ? 4096 : 2000, height: type === 'COVER' ? 4096 : 2000, fit: 'inside', withoutEnlargement: true })
+        .webp(type === 'COVER' ? { lossless: true } : { quality: 85 })
         .toBuffer();
     } catch {
       throw new ValidationError('Imagem corrompida ou dimensões excessivas');
@@ -96,6 +96,15 @@ export class UploadService {
     const image = await this.db.run(actor, (s) => this.repo.get(s, id));
     return this.storage.sign(String(image.storage_path));
   }
+  async list(actor: Actor, companyId: string) {
+    const images = await this.companies.owned(actor, companyId, async (sql) => {
+      const result = await sql.query('select id,url,type,sort_order,storage_path from public.company_images where company_id=$1 order by sort_order,id limit 100', [companyId]);
+      return result.rows;
+    });
+    return { data: await Promise.all(images.map(async ({ storage_path, ...image }) => ({
+      ...image, preview_url: await this.storage.sign(String(storage_path)),
+    }))) };
+  }
   async remove(actor: Actor, id: string) {
     const image = await this.db.run('system', (s) => this.repo.get(s, id));
     await this.companies.access(actor, String(image.company_id));
@@ -105,3 +114,5 @@ export class UploadService {
     return { success: true };
   }
 }
+
+

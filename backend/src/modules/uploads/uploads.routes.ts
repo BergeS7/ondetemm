@@ -10,6 +10,8 @@ export function uploadRoutes(s: UploadService, guard: RequestHandler) {
       storage: multer.memoryStorage(),
       limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 2, parts: 3 },
     });
+  r.get('/me/companies/:id/images', guard,
+    controller((req) => s.list(actor(req), param(req))));
   r.post(
     '/companies/:id/images',
     guard,

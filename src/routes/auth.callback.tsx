@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth/auth-provider";
 import { consumeSessionLink } from "@/features/auth/session-link";
-import { SiteShell, Loading, ErrorNotice } from "@/components/site-shell";
+import { SiteShell, PageLoading, ErrorNotice } from "@/components/site-shell";
 import { message } from "@/lib/api";
 export const Route = createFileRoute("/auth/callback")({ component: Page });
 function Page() {
@@ -38,7 +38,7 @@ function Page() {
             </a>
           </>
         ) : (
-          <Loading text="Confirmando seu acesso…" />
+          <PageLoading text="Confirmando seu acesso" />
         )}
       </div>
     </SiteShell>

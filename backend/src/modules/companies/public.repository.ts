@@ -3,7 +3,7 @@ import { one, paged } from '../../shared/utils/repository.js';
 export function findPublicCompany(sql: Sql, values: unknown[] = []) {
   return one(
     sql,
-    `select id,name,slug,short_description,description,phone,whatsapp,website,instagram,state_code,city_name,city_slug,neighborhood,street,number,complement,zipcode,latitude,longitude,logo_url,cover_url,verified,average_rating,reviews_count,is_open,plan_code,is_sponsored from public.public_companies where lower(state_code)=lower($1) and city_slug=$2 and slug=$3`,
+    `select id,name,slug,short_description,description,phone,whatsapp,website,instagram,state_code,city_name,city_slug,neighborhood,street,number,complement,zipcode,latitude,longitude,logo_url,cover_url,verified,average_rating,reviews_count,is_open,plan_code,is_sponsored,is_claimed from public.public_companies where lower(state_code)=lower($1) and city_slug=$2 and slug=$3`,
     values,
   );
 }
@@ -34,7 +34,7 @@ export function listHours(sql: Sql, values: unknown[] = [], page: Page) {
 export function listGallery(sql: Sql, values: unknown[] = [], page: Page) {
   return paged(
     sql,
-    'select id,url,type,sort_order from public.company_images where company_id=$1 order by sort_order,id',
+    "select id,url,type,sort_order from public.company_images where company_id=$1 and type='GALLERY' order by sort_order,id",
     values,
     page,
   );

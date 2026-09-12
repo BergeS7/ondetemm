@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { text, url } from '../../shared/utils/validation.js';
+import { text, imageUrl } from '../../shared/utils/validation.js';
 export const promotionBase = z
   .object({
     title: text(160).min(2),
     description: text(3000).nullable().optional(),
     original_price: z.number().min(0).max(99999999).nullable().optional(),
     promotional_price: z.number().min(0).max(99999999).nullable().optional(),
-    image_url: url.nullable().optional(),
+    image_url: imageUrl.nullable().optional(),
     starts_at: z.string().datetime({ offset: true }),
     ends_at: z.string().datetime({ offset: true }),
     is_active: z.boolean().default(true),
