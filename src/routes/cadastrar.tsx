@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { SiteShell } from "@/components/site-shell";
+import { AuthLayout } from "@/features/auth/auth-layout";
 import { AuthForm } from "@/features/auth/auth-form";
 export const Route = createFileRoute("/cadastrar")({
   head: () => ({ meta: [{ title: "Criar conta | Onde Tem" }] }),
@@ -8,10 +8,8 @@ export const Route = createFileRoute("/cadastrar")({
 function Page() {
   const navigate = useNavigate();
   return (
-    <SiteShell>
-      <div className="px-4 py-12">
-        <AuthForm mode="register" onSuccess={() => void navigate({ to: "/painel" })} />
-      </div>
-    </SiteShell>
+    <AuthLayout>
+      <AuthForm mode="register" onSuccess={() => void navigate({ to: "/painel" })} />
+    </AuthLayout>
   );
 }
