@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   MapPin,
@@ -36,6 +37,7 @@ import {
   type Page as ApiPage,
 } from "@/lib/api";
 import { ErrorNotice, buttonClass, CoverPlaceholder } from "@/components/site-shell";
+import { homeSearch } from "@/lib/home-search";
 import { useAuth } from "@/features/auth/auth-provider";
 import {
   Dialog,
@@ -382,11 +384,13 @@ export function CompanyProfileView({
         <div className="profile-wrap">
           {!editable && (
             <nav aria-label="Navegação estrutural" className="profile-breadcrumb">
-              <a href="/">Início</a>
+              <Link to="/" search={homeSearch}>
+                Início
+              </Link>
               <span>›</span>
-              <a href={`/?category=${encodeURIComponent(data.categories.data[0]?.slug ?? "")}`}>
+              <Link to="/" search={{ ...homeSearch, category: data.categories.data[0]?.slug ?? "" }}>
                 {data.categories.data[0]?.name ?? "Empresas"}
-              </a>
+              </Link>
               <span>›</span>
               <span>{c.name}</span>
             </nav>
@@ -894,12 +898,13 @@ export function CompanyProfileView({
               title="Empresas semelhantes"
               icon={<Store />}
               action={
-                <a
+                <Link
                   className="profile-more"
-                  href={`/?city=${encodeURIComponent(c.city_slug)}&state=${c.state_code.toLowerCase()}`}
+                  to="/"
+                  search={{ ...homeSearch, city: c.city_slug, state: c.state_code.toLowerCase() }}
                 >
                   Ver todas <ArrowRight />
-                </a>
+                </Link>
               }
             >
               {related.isPending ? (
@@ -914,9 +919,10 @@ export function CompanyProfileView({
                     .filter((x) => x.id !== c.id)
                     .slice(0, 4)
                     .map((x) => (
-                      <a
+                      <Link
                         key={x.id}
-                        href={`/${x.state_code.toLowerCase()}/${x.city_slug}/${x.slug}`}
+                        to="/$state/$city/$slug"
+                        params={{ state: x.state_code.toLowerCase(), city: x.city_slug, slug: x.slug }}
                       >
                         {apiImage(x.logo_url) ? (
                           <img src={apiImage(x.logo_url)} alt="" loading="lazy" />
@@ -933,7 +939,7 @@ export function CompanyProfileView({
                             </p>
                           )}
                         </div>
-                      </a>
+                      </Link>
                     ))}
                 </div>
               ) : (

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   SiteShell,
@@ -38,9 +38,9 @@ function Form() {
         <p className="mx-auto my-3 max-w-md text-sm text-muted-foreground">
           Cada conta pode gerenciar apenas uma empresa. Acesse o painel para editar o seu perfil.
         </p>
-        <a href="/painel" className={`${buttonClass} mt-3`}>
+        <Link to="/painel" className={`${buttonClass} mt-3`}>
           Ir para o painel
-        </a>
+        </Link>
       </div>
     );
   return (

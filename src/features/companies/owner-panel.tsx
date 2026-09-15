@@ -1,4 +1,5 @@
 import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Area,
@@ -47,7 +48,8 @@ import {
   type AnalyticsSummary,
 } from "@/lib/api";
 import { useAuth } from "@/features/auth/auth-provider";
-import { PageLoading, ErrorNotice, buttonClass } from "@/components/site-shell";
+import { PageLoading, ErrorNotice, buttonClass, inputClass } from "@/components/site-shell";
+import { homeSearch } from "@/lib/home-search";
 import { CompanyProfilePreview } from "./company-profile-preview";
 import { type EditSection } from "./company-profile-view";
 import { CompanyForm } from "./company-form";
@@ -220,9 +222,9 @@ function DashboardTab({
           Assim que sua empresa for cadastrada, as métricas de visualizações e contatos aparecem
           aqui.
         </p>
-        <a href="/empresas/nova" className={`${buttonClass} mt-3`}>
+        <Link to="/empresas/nova" className={`${buttonClass} mt-3`}>
           Cadastrar minha empresa
-        </a>
+        </Link>
       </div>
     );
   const rating = Number(company?.average_rating) || 0,
@@ -534,10 +536,10 @@ function PerfilTab({
           <p className="mx-auto my-3 max-w-md text-sm text-muted-foreground">
             Você ainda não cadastrou uma empresa. Crie seu perfil e envie para aprovação.
           </p>
-          <a href="/empresas/nova" className={`${buttonClass} mt-3`}>
+          <Link to="/empresas/nova" className={`${buttonClass} mt-3`}>
             <Plus className="h-4 w-4" />
             Cadastrar minha empresa
-          </a>
+          </Link>
         </div>
       ) : (
         <>
@@ -834,6 +836,16 @@ function NotificacoesTab() {
 function ConfiguracoesTab() {
   const auth = useAuth();
   const [leaving, setLeaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(auth.user?.name ?? "");
+  const updateName = useMutation({
+    mutationFn: (value: string) =>
+      api.request("/me", { method: "PATCH", authenticated: true, body: { name: value } }),
+    onSuccess: async () => {
+      await auth.reload();
+      setEditing(false);
+    },
+  });
   return (
     <div>
       <div className="mb-6">
@@ -845,8 +857,69 @@ function ConfiguracoesTab() {
           <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
             <UserRound className="h-7 w-7" />
           </span>
-          <div>
-            <p className="text-lg font-bold">{auth.user?.name}</p>
+          <div className="min-w-0 flex-1">
+            {editing ? (
+              <form
+                className="flex flex-wrap items-start gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const trimmed = name.trim();
+                  if (trimmed.length >= 2) updateName.mutate(trimmed);
+                }}
+              >
+                <label className="sr-only" htmlFor="account-name">
+                  Nome
+                </label>
+                <input
+                  id="account-name"
+                  className={`${inputClass} max-w-[220px]`}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  minLength={2}
+                  maxLength={120}
+                  required
+                  autoFocus
+                  disabled={updateName.isPending}
+                />
+                <button
+                  className={buttonClass}
+                  disabled={updateName.isPending || name.trim().length < 2}
+                >
+                  {updateName.isPending ? "Salvando…" : "Salvar"}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold hover:bg-muted"
+                  disabled={updateName.isPending}
+                  onClick={() => {
+                    setEditing(false);
+                    setName(auth.user?.name ?? "");
+                    updateName.reset();
+                  }}
+                >
+                  Cancelar
+                </button>
+                {updateName.error && (
+                  <p className="w-full text-sm text-danger">{message(updateName.error)}</p>
+                )}
+              </form>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-lg font-bold">{auth.user?.name}</p>
+                <button
+                  type="button"
+                  aria-label="Editar nome"
+                  className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-semibold text-brand hover:bg-brand-soft"
+                  onClick={() => {
+                    setName(auth.user?.name ?? "");
+                    setEditing(true);
+                  }}
+                >
+                  <SquarePen className="h-3.5 w-3.5" />
+                  Editar
+                </button>
+              </div>
+            )}
             <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Mail className="h-3.5 w-3.5" />
               {auth.user?.email}
@@ -854,13 +927,13 @@ function ConfiguracoesTab() {
           </div>
         </div>
         <div className="mt-6 space-y-3 border-t border-border pt-5">
-          <a
-            href="/recuperar-senha"
+          <Link
+            to="/recuperar-senha"
             className="flex items-center gap-2 rounded-lg border border-border px-4 py-3 text-sm font-semibold transition-colors hover:bg-muted"
           >
             <KeyRound className="h-4 w-4" />
             Alterar senha
-          </a>
+          </Link>
           <button
             disabled={leaving}
             onClick={async () => {
@@ -894,20 +967,21 @@ export function LoggedOutGate() {
         </p>
         {auth.error && <ErrorNotice onRetry={() => void auth.reload()}>{auth.error}</ErrorNotice>}
         <div className="mt-4 flex justify-center gap-3">
-          <a href="/entrar" className={buttonClass}>
+          <Link to="/entrar" className={buttonClass}>
             Entrar
-          </a>
-          <a href="/cadastrar" className="px-4 py-3 text-sm font-semibold text-brand">
+          </Link>
+          <Link to="/cadastrar" className="px-4 py-3 text-sm font-semibold text-brand">
             Criar conta
-          </a>
+          </Link>
         </div>
-        <a
-          href="/"
+        <Link
+          to="/"
+          search={homeSearch}
           className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-brand"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Voltar ao site
-        </a>
+        </Link>
       </div>
     </div>
   );
@@ -936,9 +1010,9 @@ export function PanelChrome({
   return (
     <div className="flex min-h-screen bg-muted/30">
       <aside className="hidden w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground lg:flex">
-        <a href="/" className="flex items-center gap-2 px-6 py-6">
+        <Link to="/" search={homeSearch} className="flex items-center gap-2 px-6 py-6">
           <img src={brandLogo} alt="Ondetemm" className="h-10 w-auto object-contain" />
-        </a>
+        </Link>
         <nav aria-label="Navegação do painel" className="flex-1 space-y-1 px-4">
           {NAV.map((n) => (
             <a
@@ -964,13 +1038,14 @@ export function PanelChrome({
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-card/90 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
           <img src={brandLogo} alt="Ondetemm" className="h-8 w-auto object-contain lg:hidden" />
-          <a
-            href="/"
+          <Link
+            to="/"
+            search={homeSearch}
             className="hidden items-center gap-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-brand lg:flex"
           >
             <ArrowLeft className="h-4 w-4" />
             Voltar ao site
-          </a>
+          </Link>
           <div className="ml-auto flex items-center gap-3">
             <a
               aria-label="Notificações"

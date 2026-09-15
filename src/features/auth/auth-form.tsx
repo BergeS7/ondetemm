@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { useAuth } from "./auth-provider";
 import { api, message } from "@/lib/api";
 import { buttonClass, inputClass, ErrorNotice } from "@/components/site-shell";
@@ -134,17 +135,17 @@ export function AuthForm({
       <div className="mt-5 flex flex-wrap justify-between gap-3 text-sm text-brand">
         {mode === "login" ? (
           <>
-            <a href="/cadastrar" className="underline">
+            <Link to="/cadastrar" className="underline">
               Criar conta
-            </a>
-            <a href="/recuperar-senha" className="underline">
+            </Link>
+            <Link to="/recuperar-senha" className="underline">
               Esqueci minha senha
-            </a>
+            </Link>
           </>
         ) : (
-          <a href="/entrar" className="underline">
+          <Link to="/entrar" className="underline">
             Voltar para entrar
-          </a>
+          </Link>
         )}
       </div>
     </div>
