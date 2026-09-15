@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, message, type Page, type Company, type User } from "@/lib/api";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -23,15 +24,15 @@ export function AdminAccess({ children }: { children: ReactNode }) {
         <div role="alert" className="rounded-xl border p-8">
           <h1 className="text-2xl font-bold">Acesso restrito</h1>
           <p className="mt-3">Esta área é exclusiva para administradores.</p>
-          <a href="/painel" className="mt-4 inline-block text-brand">
+          <Link to="/painel" className="mt-4 inline-block text-brand">
             Voltar para minhas empresas
-          </a>
+          </Link>
         </div>
       )}
     </RequireAccount>
   );
 }
-type Tab = "companies" | "claims" | "users" | "analytics";
+type Tab = "companies" | "claims" | "users" | "analytics" | "trials";
 type Action = {
   path: string;
   name: string;
@@ -40,6 +41,16 @@ type Action = {
 };
 type Profile = User & { status: string };
 type Metric = { company_id: string; event_type: string; count: number };
+type Trial = {
+  id: string;
+  company_id: string;
+  company_name: string;
+  plan_code: string;
+  plan_name: string;
+  current_period_start: string;
+  current_period_end: string;
+  status: string;
+};
 type Claim = {
   id: string;
   company_id: string;
@@ -74,6 +85,9 @@ export function AdminPanel() {
     [notice, setNotice] = useState(""),
     [creating, setCreating] = useState(false),
     [managing, setManaging] = useState<string | null>(null);
+  const [granting, setGranting] = useState<Company | null>(null),
+    [grantPlan, setGrantPlan] = useState<"FEATURED" | "PREMIUM">("FEATURED"),
+    [grantDays, setGrantDays] = useState(7);
   const key = ["private", user?.id, "admin"];
   const dashboard = useQuery({
     queryKey: [...key, "dashboard"],
@@ -83,16 +97,42 @@ export function AdminPanel() {
         pending: number;
         users: number;
         active_subscriptions: number;
+        active_trials: number;
+        new_companies_7d: number;
+        pending_claims: number;
+        revenue_this_month: number;
+        companies_by_plan: Record<string, number>;
       }>("/admin/dashboard", { authenticated: true, signal }),
   });
   const endpoint = tab === "claims" ? "company-claims" : tab;
   const rows = useQuery({
     queryKey: [...key, tab, page, status],
     queryFn: ({ signal }) =>
-      api.request<Page<Company | Profile | Metric | Claim>>(
+      api.request<Page<Company | Profile | Metric | Claim | Trial>>(
         `/admin/${endpoint}?page=${page}&limit=10${tab === "companies" && status ? `&status=${status}` : ""}${tab === "claims" ? "&status=PENDING" : ""}`,
         { authenticated: true, signal },
       ),
+  });
+  const grantMutation = useMutation({
+    mutationFn: ({ company, plan_code, days }: { company: string; plan_code: string; days: number }) =>
+      api.request(`/admin/companies/${company}/trial`, {
+        method: "POST",
+        authenticated: true,
+        body: { plan_code, days },
+      }),
+    onSuccess: async () => {
+      setGranting(null);
+      setNotice("Teste grátis concedido com sucesso.");
+      await cache.invalidateQueries({ queryKey: key });
+    },
+  });
+  const cancelTrialMutation = useMutation({
+    mutationFn: (id: string) =>
+      api.request(`/admin/trials/${id}/cancel`, { method: "POST", authenticated: true }),
+    onSuccess: async () => {
+      setNotice("Teste grátis cancelado.");
+      await cache.invalidateQueries({ queryKey: key });
+    },
   });
   const mutation = useMutation({
     mutationFn: ({ target, reason: why }: { target: Action; reason: string }) =>
@@ -135,19 +175,48 @@ export function AdminPanel() {
           {message(dashboard.error)}
         </ErrorNotice>
       ) : (
-        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {[
-            ["Empresas", dashboard.data.companies],
-            ["Aguardando aprovação", dashboard.data.pending],
-            ["Usuários", dashboard.data.users],
-            ["Assinaturas ativas", dashboard.data.active_subscriptions],
-          ].map(([label, value]) => (
-            <div key={label} className="rounded-xl border border-border bg-card p-5">
-              <p className="text-sm text-muted-foreground">{label}</p>
-              <p className="mt-2 text-3xl font-bold">{value}</p>
+        <>
+          <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {(
+              [
+                ["Empresas", dashboard.data.companies],
+                ["Aguardando aprovação", dashboard.data.pending],
+                ["Reivindicações pendentes", dashboard.data.pending_claims],
+                ["Usuários", dashboard.data.users],
+                ["Novas empresas (7 dias)", dashboard.data.new_companies_7d],
+                ["Assinaturas ativas", dashboard.data.active_subscriptions],
+                ["Testes grátis ativos", dashboard.data.active_trials],
+                [
+                  "Receita do mês",
+                  dashboard.data.revenue_this_month.toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
+                  }),
+                ],
+              ] as const
+            ).map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-border bg-card p-5">
+                <p className="text-sm text-muted-foreground">{label}</p>
+                <p className="mt-2 text-3xl font-bold">{value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mb-8 rounded-xl border border-border bg-card p-5">
+            <p className="mb-3 text-sm font-semibold text-muted-foreground">
+              Empresas por plano
+            </p>
+            <div className="flex flex-wrap gap-4">
+              {["FREE", "FEATURED", "PREMIUM"].map((code) => (
+                <div key={code} className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-bold">
+                    {dashboard.data.companies_by_plan[code] ?? 0}
+                  </span>
+                  <span className="text-sm text-muted-foreground">{code}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        </>
       )}
       <nav aria-label="Seções administrativas" className="mb-6 flex flex-wrap gap-2">
         {(
@@ -155,6 +224,7 @@ export function AdminPanel() {
             ["companies", "Empresas"],
             ["claims", "Reivindicações de empresas"],
             ["users", "Usuários"],
+            ["trials", "Testes grátis"],
             ["analytics", "Métricas"],
           ] as const
         ).map(([value, label]) => (
@@ -298,6 +368,18 @@ export function AdminPanel() {
                             </button>
                           </>
                         )}
+                        {c.status === "ACTIVE" && (
+                          <button
+                            className="rounded-lg border border-brand/30 px-4 py-2 text-brand"
+                            onClick={() => {
+                              setGranting(c);
+                              setGrantPlan("FEATURED");
+                              setGrantDays(7);
+                            }}
+                          >
+                            Conceder teste grátis
+                          </button>
+                        )}
                         {c.status !== "SUSPENDED" && (
                           <button
                             className="rounded-lg border border-danger/30 px-4 py-2 text-danger"
@@ -390,6 +472,34 @@ export function AdminPanel() {
                           }
                         >
                           Suspender usuário
+                        </button>
+                      )}
+                    </article>
+                  );
+                }
+                if (tab === "trials") {
+                  const t = row as Trial;
+                  const active = t.status === "ACTIVE" && new Date(t.current_period_end) > new Date();
+                  return (
+                    <article key={t.id} className="rounded-xl border border-border p-5">
+                      <div className="flex flex-wrap justify-between gap-2">
+                        <h2 className="text-lg font-bold">{t.company_name}</h2>
+                        <span className={active ? "text-sm text-brand" : "text-sm text-muted-foreground"}>
+                          {active ? "Ativo" : "Cancelado"}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm">
+                        Plano {t.plan_name} ({t.plan_code}) até{" "}
+                        {new Date(t.current_period_end).toLocaleDateString("pt-BR")}
+                      </p>
+                      <p className="break-all text-xs text-muted-foreground">Empresa: {t.company_id}</p>
+                      {active && (
+                        <button
+                          className="mt-3 rounded-lg border border-danger/30 px-4 py-2 text-danger disabled:opacity-50"
+                          disabled={cancelTrialMutation.isPending}
+                          onClick={() => cancelTrialMutation.mutate(t.id)}
+                        >
+                          {cancelTrialMutation.isPending ? "Cancelando…" : "Cancelar teste grátis"}
                         </button>
                       )}
                     </article>
@@ -509,6 +619,67 @@ export function AdminPanel() {
             <DialogTitle>Gerenciar cadastro</DialogTitle>
           </DialogHeader>
           {managing && <CompanyManager id={managing} />}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!granting} onOpenChange={(open) => !open && setGranting(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Conceder teste grátis</DialogTitle>
+          </DialogHeader>
+          {granting && (
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!grantMutation.isPending)
+                  grantMutation.mutate({ company: granting.id, plan_code: grantPlan, days: grantDays });
+              }}
+            >
+              <p className="text-sm text-muted-foreground">{granting.name}</p>
+              <label className="block text-sm font-medium">
+                Plano
+                <select
+                  className={inputClass + " mt-2"}
+                  value={grantPlan}
+                  onChange={(e) => setGrantPlan(e.target.value as "FEATURED" | "PREMIUM")}
+                >
+                  <option value="FEATURED">Destaque</option>
+                  <option value="PREMIUM">Premium</option>
+                </select>
+              </label>
+              <label className="block text-sm font-medium">
+                Dias de acesso
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  required
+                  className={inputClass + " mt-2"}
+                  value={grantDays}
+                  onChange={(e) => setGrantDays(Number(e.target.value))}
+                />
+              </label>
+              <p className="text-xs text-muted-foreground">
+                A empresa passa a ter os recursos do plano escolhido por {grantDays}{" "}
+                {grantDays === 1 ? "dia" : "dias"}, sem cobrança. Você pode cancelar a qualquer
+                momento na aba "Testes grátis".
+              </p>
+              {grantMutation.error && <ErrorNotice>{message(grantMutation.error)}</ErrorNotice>}
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  className="rounded-lg border px-4 py-2"
+                  disabled={grantMutation.isPending}
+                  onClick={() => setGranting(null)}
+                >
+                  Cancelar
+                </button>
+                <button className={buttonClass} disabled={grantMutation.isPending}>
+                  {grantMutation.isPending ? "Concedendo…" : "Confirmar"}
+                </button>
+              </div>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </>

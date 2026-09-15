@@ -32,7 +32,17 @@ function mount() {
 function mockApi() {
   return vi.spyOn(api, "request").mockImplementation(async <T,>(path: string): Promise<T> => {
     if (path === "/admin/dashboard")
-      return { companies: 1, pending: 1, users: 1, active_subscriptions: 0 } as T;
+      return {
+        companies: 1,
+        pending: 1,
+        users: 1,
+        active_subscriptions: 0,
+        active_trials: 0,
+        new_companies_7d: 0,
+        pending_claims: 0,
+        revenue_this_month: 0,
+        companies_by_plan: { FREE: 1 },
+      } as T;
     if (path.startsWith("/admin/companies?"))
       return {
         data: [

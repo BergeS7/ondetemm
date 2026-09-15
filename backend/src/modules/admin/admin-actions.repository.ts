@@ -29,3 +29,36 @@ export function auditLog(sql: Sql, values: unknown[] = []) {
     values,
   );
 }
+export function lockCompanyForTrial(sql: Sql, values: unknown[] = []) {
+  return one(sql, "select id from public.companies where id=$1 and deleted_at is null for update", values);
+}
+export function findLiveSubscription(sql: Sql, values: unknown[] = []) {
+  return sql.query(
+    "select id from public.subscriptions where company_id=$1 and status in ('PENDING','ACTIVE','PAST_DUE')",
+    values,
+  );
+}
+export function findPaidPlan(sql: Sql, values: unknown[] = []) {
+  return one(sql, "select * from public.plans where code=$1 and code<>'FREE' and is_active", values);
+}
+export function grantTrialSubscription(sql: Sql, values: unknown[] = []) {
+  // values: [id, company_id, plan_id, days]
+  return one(
+    sql,
+    `insert into public.subscriptions(id,company_id,plan_id,amount,provider,status,current_period_start,current_period_end)
+     values($1,$2,$3,0,'ADMIN_TRIAL','ACTIVE',now(),now()+make_interval(days=>$4::int)) returning *`,
+    values,
+  );
+}
+export function findTrialSubscription(sql: Sql, values: unknown[] = []) {
+  return one(sql, "select * from public.subscriptions where id=$1 and provider='ADMIN_TRIAL'", values);
+}
+export function cancelTrialSubscription(sql: Sql, values: unknown[] = []) {
+  return sql.query(
+    "update public.subscriptions set status='CANCELED',current_period_end=now() where id=$1",
+    values,
+  );
+}
+export function refreshCompanyPlan(sql: Sql, values: unknown[] = []) {
+  return sql.query('update public.companies set plan_id=public.effective_plan(id) where id=$1', values);
+}

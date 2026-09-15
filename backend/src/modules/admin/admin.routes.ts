@@ -100,6 +100,27 @@ export function adminRoutes(s: AdminService, guard: RequestHandler) {
     '/analytics',
     controller((req) => s.analytics(actor(req), pagination.parse(req.query))),
   );
+  r.get(
+    '/trials',
+    controller((req) => s.trials(actor(req), pagination.parse(req.query))),
+  );
+  r.post(
+    '/companies/:id/trial',
+    controller((req) => {
+      const body = z
+        .object({
+          plan_code: z.enum(['FEATURED', 'PREMIUM']),
+          days: z.coerce.number().int().min(1).max(365),
+        })
+        .strict()
+        .parse(req.body);
+      return s.grantTrial(actor(req), param(req), body.plan_code, body.days);
+    }, 201),
+  );
+  r.post(
+    '/trials/:id/cancel',
+    controller((req) => s.cancelTrial(actor(req), param(req))),
+  );
   r.post(
     '/users/:id/suspend',
     controller((req) =>

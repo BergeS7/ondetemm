@@ -96,6 +96,54 @@ export class AdminService {
       return company;
     });
   }
+  trials(a: Actor, p: Page) {
+    this.check(a);
+    return this.db.run(a, (s) => repo.trials(s, p));
+  }
+  grantTrial(a: Actor, companyId: string, planCode: string, days: number) {
+    this.check(a);
+    return this.db.run('system', async (s) => {
+      await queries.lockCompanyForTrial(s, [companyId]);
+      const live = await queries.findLiveSubscription(s, [companyId]);
+      if (live.rows.length)
+        throw new ConflictError(
+          'Esta empresa já tem uma assinatura ativa ou pendente. Cancele-a antes de conceder um teste grátis.',
+        );
+      const plan = await queries.findPaidPlan(s, [planCode]);
+      const subscription = await queries.grantTrialSubscription(s, [
+        randomUUID(),
+        companyId,
+        plan.id,
+        days,
+      ]);
+      await queries.refreshCompanyPlan(s, [companyId]);
+      await queries.auditLog(s, [
+        a.id,
+        'TRIAL_GRANTED',
+        'subscription',
+        String(subscription.id),
+        JSON.stringify({ company_id: companyId, plan_code: planCode, days }),
+      ]);
+      return subscription;
+    });
+  }
+  cancelTrial(a: Actor, subscriptionId: string) {
+    this.check(a);
+    return this.db.run('system', async (s) => {
+      const trial = await queries.findTrialSubscription(s, [subscriptionId]);
+      if (trial.status === 'CANCELED') return { success: true };
+      await queries.cancelTrialSubscription(s, [subscriptionId]);
+      await queries.refreshCompanyPlan(s, [trial.company_id]);
+      await queries.auditLog(s, [
+        a.id,
+        'TRIAL_CANCELED',
+        'subscription',
+        subscriptionId,
+        JSON.stringify({ company_id: trial.company_id }),
+      ]);
+      return { success: true };
+    });
+  }
   suspendUser(a: Actor, id: string, reason: string) {
     this.check(a);
     if (a.id === id) throw new ForbiddenError('Não suspenda sua própria conta');
