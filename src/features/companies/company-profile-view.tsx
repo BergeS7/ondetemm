@@ -245,6 +245,8 @@ interface ReviewRow {
   created_at: string;
   user_id: string;
   reviewer_name: string;
+  owner_reply: string | null;
+  owner_reply_at: string | null;
 }
 function ReviewsPanel({ companyId }: { companyId: string }) {
   const auth = useAuth();
@@ -296,6 +298,12 @@ function ReviewsPanel({ companyId }: { companyId: string }) {
               <p className="mt-1 text-xs text-muted-foreground">
                 {new Date(r.created_at).toLocaleDateString("pt-BR")}
               </p>
+              {r.owner_reply && (
+                <div className="mt-2 rounded-lg bg-muted p-2.5">
+                  <p className="text-xs font-semibold text-brand">Resposta da empresa</p>
+                  <p className="profile-muted mt-0.5">{r.owner_reply}</p>
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -371,6 +379,102 @@ function ReviewsPanel({ companyId }: { companyId: string }) {
         </div>
       )}
     </div>
+  );
+}
+function OwnerReviewsPanel({ companyId, empty }: { companyId: string; empty: boolean }) {
+  const cache = useQueryClient();
+  const reviews = useQuery({
+    queryKey: ["public-reviews", companyId],
+    queryFn: ({ signal }) =>
+      api.request<ApiPage<ReviewRow>>(`/companies/${companyId}/reviews?limit=20`, { signal }),
+  });
+  const [replyingTo, setReplyingTo] = useState<string | null>(null),
+    [reply, setReply] = useState("");
+  const submitReply = useMutation({
+    mutationFn: (id: string) =>
+      api.request(`/reviews/${id}/reply`, {
+        method: "POST",
+        authenticated: true,
+        body: { reply: reply.trim() || null },
+      }),
+    onSuccess: async () => {
+      setReplyingTo(null);
+      await cache.invalidateQueries({ queryKey: ["public-reviews", companyId] });
+    },
+  });
+  const list = reviews.data?.data ?? [];
+  if (empty && !reviews.isPending)
+    return <p className="profile-empty">Esta empresa ainda não tem avaliações.</p>;
+  if (reviews.isPending) return <p className="profile-muted">Carregando avaliações…</p>;
+  return (
+    <ul className="mt-2 space-y-3">
+      {list.map((r) => (
+        <li key={r.id} className="rounded-xl border border-border p-3 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-semibold">{r.reviewer_name}</span>
+            <Stars rating={r.rating} />
+          </div>
+          {r.comment && <p className="profile-muted mt-1">{r.comment}</p>}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {new Date(r.created_at).toLocaleDateString("pt-BR")}
+          </p>
+          {r.owner_reply && replyingTo !== r.id && (
+            <div className="mt-2 rounded-lg bg-muted p-2.5">
+              <p className="text-xs font-semibold text-brand">Sua resposta</p>
+              <p className="profile-muted mt-0.5">{r.owner_reply}</p>
+            </div>
+          )}
+          {replyingTo === r.id ? (
+            <form
+              className="mt-2 space-y-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitReply.mutate(r.id);
+              }}
+            >
+              <textarea
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                maxLength={2000}
+                placeholder="Escreva uma resposta pública para este cliente…"
+                value={reply}
+                onChange={(e) => setReply(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className={buttonClass}
+                  disabled={submitReply.isPending}
+                >
+                  {submitReply.isPending ? "Salvando…" : "Enviar resposta"}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-border px-3 py-2 text-sm font-semibold"
+                  disabled={submitReply.isPending}
+                  onClick={() => setReplyingTo(null)}
+                >
+                  Cancelar
+                </button>
+              </div>
+              {submitReply.error && (
+                <p className="text-sm text-danger">{message(submitReply.error)}</p>
+              )}
+            </form>
+          ) : (
+            <button
+              type="button"
+              className="mt-2 text-xs font-semibold text-brand hover:underline"
+              onClick={() => {
+                setReply(r.owner_reply ?? "");
+                setReplyingTo(r.id);
+              }}
+            >
+              {r.owner_reply ? "Editar resposta" : "Responder"}
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 function EditChip({ onClick, label }: { onClick: () => void; label: string }) {
@@ -884,11 +988,7 @@ export function CompanyProfileView({
                   </div>
                 )}
                 {editable ? (
-                  <p className="profile-empty">
-                    {c.reviews_count > 0
-                      ? "Veja o perfil público para ler os comentários."
-                      : "Esta empresa ainda não tem avaliações."}
-                  </p>
+                  <OwnerReviewsPanel companyId={c.id} empty={c.reviews_count === 0} />
                 ) : (
                   <ReviewsPanel companyId={c.id} />
                 )}

@@ -100,7 +100,9 @@ export function AdminPanel() {
     cache = useQueryClient();
   const [tab, setTab] = useState<Tab>("companies"),
     [page, setPage] = useState(1),
-    [status, setStatus] = useState("PENDING_APPROVAL");
+    [status, setStatus] = useState("PENDING_APPROVAL"),
+    [search, setSearch] = useState(""),
+    [searchInput, setSearchInput] = useState("");
   const [action, setAction] = useState<Action | null>(null),
     [reason, setReason] = useState(""),
     [notice, setNotice] = useState(""),
@@ -126,11 +128,12 @@ export function AdminPanel() {
       }>("/admin/dashboard", { authenticated: true, signal }),
   });
   const endpoint = tab === "claims" ? "company-claims" : tab === "audit" ? "audit-logs" : tab;
+  const searchable = tab === "companies" || tab === "users";
   const rows = useQuery({
-    queryKey: [...key, tab, page, status],
+    queryKey: [...key, tab, page, status, search],
     queryFn: ({ signal }) =>
       api.request<Page<Company | Profile | Metric | Claim | Trial | AuditLog>>(
-        `/admin/${endpoint}?page=${page}&limit=10${tab === "companies" && status ? `&status=${status}` : ""}${tab === "claims" ? "&status=PENDING" : ""}`,
+        `/admin/${endpoint}?page=${page}&limit=10${tab === "companies" && status ? `&status=${status}` : ""}${tab === "claims" ? "&status=PENDING" : ""}${searchable && search ? `&search=${encodeURIComponent(search)}` : ""}`,
         { authenticated: true, signal },
       ),
   });
@@ -265,6 +268,43 @@ export function AdminPanel() {
           </button>
         ))}
       </nav>
+      {searchable && (
+        <form
+          className="mb-5 flex max-w-sm gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSearch(searchInput.trim());
+            setPage(1);
+          }}
+        >
+          <label className="sr-only" htmlFor="admin-search">
+            {tab === "companies" ? "Buscar empresa por nome" : "Buscar usuário por nome ou e-mail"}
+          </label>
+          <input
+            id="admin-search"
+            className={inputClass}
+            placeholder={tab === "companies" ? "Buscar empresa por nome…" : "Buscar por nome ou e-mail…"}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+          <button type="submit" className="rounded-lg border px-4 py-2 text-sm font-semibold">
+            Buscar
+          </button>
+          {search && (
+            <button
+              type="button"
+              className="rounded-lg border px-4 py-2 text-sm font-semibold"
+              onClick={() => {
+                setSearch("");
+                setSearchInput("");
+                setPage(1);
+              }}
+            >
+              Limpar
+            </button>
+          )}
+        </form>
+      )}
       {notice && (
         <p role="status" className="mb-4 rounded-lg bg-brand-soft p-4">
           {notice}

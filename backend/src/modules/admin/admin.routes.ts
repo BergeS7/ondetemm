@@ -25,9 +25,10 @@ export function adminRoutes(s: AdminService, guard: RequestHandler) {
           status: z
             .enum(['DRAFT', 'PENDING_APPROVAL', 'ACTIVE', 'REJECTED', 'SUSPENDED'])
             .optional(),
+          search: text(160).optional(),
         })
         .parse(req.query);
-      return s.companies(actor(req), q, q.status);
+      return s.companies(actor(req), q, q.status, q.search);
     }),
   );
   r.post(
@@ -82,7 +83,10 @@ export function adminRoutes(s: AdminService, guard: RequestHandler) {
   );
   r.get(
     '/users',
-    controller((req) => s.list(actor(req), 'profiles', pagination.parse(req.query))),
+    controller((req) => {
+      const q = pagination.extend({ search: text(160).optional() }).parse(req.query);
+      return s.users(actor(req), q, q.search);
+    }),
   );
   r.get(
     '/plans',

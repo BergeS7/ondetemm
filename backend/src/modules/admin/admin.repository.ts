@@ -1,11 +1,20 @@
 import type { Page, Sql } from '../../shared/types/index.js';
 import { one, paged } from '../../shared/utils/repository.js';
 export const adminRepository = {
-  companies: (s: Sql, p: Page, status?: string) =>
+  companies: (s: Sql, p: Page, status?: string, search?: string) =>
     paged(
       s,
-      'select * from public.companies where deleted_at is null and ($1::text is null or status::text=$1) order by created_at desc,id',
-      [status ?? null],
+      `select * from public.companies where deleted_at is null and ($1::text is null or status::text=$1)
+       and ($2::text is null or name ilike '%'||$2||'%') order by created_at desc,id`,
+      [status ?? null, search ?? null],
+      p,
+    ),
+  users: (s: Sql, p: Page, search?: string) =>
+    paged(
+      s,
+      `select * from public.profiles where ($1::text is null or name ilike '%'||$1||'%' or email ilike '%'||$1||'%')
+       order by created_at desc,id`,
+      [search ?? null],
       p,
     ),
   list: (s: Sql, table: 'profiles' | 'plans' | 'subscriptions' | 'admin_audit_logs', p: Page) =>
