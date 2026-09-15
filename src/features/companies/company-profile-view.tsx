@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -236,6 +236,141 @@ function ClaimBusinessButton({ companyId }: { companyId: string }) {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+interface ReviewRow {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  user_id: string;
+  reviewer_name: string;
+}
+function ReviewsPanel({ companyId }: { companyId: string }) {
+  const auth = useAuth();
+  const cache = useQueryClient();
+  const reviews = useQuery({
+    queryKey: ["public-reviews", companyId],
+    queryFn: ({ signal }) =>
+      api.request<ApiPage<ReviewRow>>(`/companies/${companyId}/reviews?limit=20`, { signal }),
+  });
+  const list = reviews.data?.data ?? [];
+  const mine = auth.user ? list.find((r) => r.user_id === auth.user!.id) : undefined;
+  const [editing, setEditing] = useState(false),
+    [rating, setRating] = useState(5),
+    [comment, setComment] = useState("");
+  const refresh = () => cache.invalidateQueries({ queryKey: ["public-reviews", companyId] });
+  const submit = useMutation({
+    mutationFn: () =>
+      api.request(`/companies/${companyId}/reviews`, {
+        method: "POST",
+        authenticated: true,
+        body: { rating, comment: comment.trim() || undefined },
+      }),
+    onSuccess: async () => {
+      setEditing(false);
+      await refresh();
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) =>
+      api.request(`/reviews/${id}`, { method: "DELETE", authenticated: true }),
+    onSuccess: () => refresh(),
+  });
+  function startEditing() {
+    setRating(mine?.rating ?? 5);
+    setComment(mine?.comment ?? "");
+    setEditing(true);
+  }
+  return (
+    <div className="mt-4 space-y-4">
+      {list.length > 0 && (
+        <ul className="space-y-3">
+          {list.map((r) => (
+            <li key={r.id} className="rounded-xl border border-border p-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-semibold">{r.reviewer_name}</span>
+                <Stars rating={r.rating} />
+              </div>
+              {r.comment && <p className="profile-muted mt-1">{r.comment}</p>}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {new Date(r.created_at).toLocaleDateString("pt-BR")}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!auth.ready ? null : !auth.user ? (
+        <p className="profile-muted">
+          <Link to="/entrar" className="underline">
+            Entre na sua conta
+          </Link>{" "}
+          para avaliar esta empresa.
+        </p>
+      ) : editing ? (
+        <form
+          className="space-y-2 rounded-xl border border-border p-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit.mutate();
+          }}
+        >
+          <label className="block text-sm font-medium">
+            Sua nota
+            <select
+              className="mt-1 block rounded-lg border border-border px-3 py-2 text-sm"
+              value={rating}
+              onChange={(e) => setRating(Number(e.target.value))}
+            >
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={n}>
+                  {n} {n === 1 ? "estrela" : "estrelas"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-medium">
+            Comentário (opcional)
+            <textarea
+              className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm"
+              maxLength={2000}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+            />
+          </label>
+          {submit.error && <p className="text-sm text-danger">{message(submit.error)}</p>}
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" className={buttonClass} disabled={submit.isPending}>
+              {submit.isPending ? "Salvando…" : mine ? "Atualizar avaliação" : "Enviar avaliação"}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold"
+              disabled={submit.isPending}
+              onClick={() => setEditing(false)}
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="flex flex-wrap gap-3">
+          <button type="button" className={buttonClass} onClick={startEditing}>
+            {mine ? "Editar minha avaliação" : "Avaliar esta empresa"}
+          </button>
+          {mine && (
+            <button
+              type="button"
+              className="rounded-lg border border-danger/30 px-4 py-2 text-sm font-semibold text-danger disabled:opacity-50"
+              disabled={remove.isPending}
+              onClick={() => remove.mutate(mine.id)}
+            >
+              {remove.isPending ? "Removendo…" : "Remover minha avaliação"}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 function EditChip({ onClick, label }: { onClick: () => void; label: string }) {
@@ -739,21 +874,23 @@ export function CompanyProfileView({
                 title="Avaliações dos clientes"
                 icon={<Star fill="#ffb400" style={{ color: "#ffb400" }} />}
               >
-                {c.reviews_count > 0 ? (
-                  <>
-                    <div className="profile-rating">
-                      <b>{rating.toLocaleString("pt-BR", { minimumFractionDigits: 1 })}</b>
-                      <div>
-                        <Stars rating={rating} />
-                        <p className="profile-muted">{c.reviews_count} avaliações</p>
-                      </div>
+                {c.reviews_count > 0 && (
+                  <div className="profile-rating">
+                    <b>{rating.toLocaleString("pt-BR", { minimumFractionDigits: 1 })}</b>
+                    <div>
+                      <Stars rating={rating} />
+                      <p className="profile-muted">{c.reviews_count} avaliações</p>
                     </div>
-                    <p className="profile-empty">
-                      Os comentários das avaliações ainda não estão disponíveis.
-                    </p>
-                  </>
+                  </div>
+                )}
+                {editable ? (
+                  <p className="profile-empty">
+                    {c.reviews_count > 0
+                      ? "Veja o perfil público para ler os comentários."
+                      : "Esta empresa ainda não tem avaliações."}
+                  </p>
                 ) : (
-                  <p className="profile-empty">Esta empresa ainda não tem avaliações.</p>
+                  <ReviewsPanel companyId={c.id} />
                 )}
               </Panel>
             </div>

@@ -29,6 +29,8 @@ import { uploadRoutes } from './modules/uploads/uploads.routes.js';
 import { UploadService } from './modules/uploads/uploads.service.js';
 import { analyticsRoutes } from './modules/analytics/analytics.routes.js';
 import { AnalyticsService } from './modules/analytics/analytics.service.js';
+import { reviewRoutes } from './modules/reviews/reviews.routes.js';
+import { ReviewService } from './modules/reviews/reviews.service.js';
 import { adminRoutes } from './modules/admin/admin.routes.js';
 import { AdminService } from './modules/admin/admin.service.js';
 import { controller, actor } from './shared/utils/http.js';
@@ -133,6 +135,7 @@ export function createApp(config: Config, deps: Dependencies) {
       guard,
       limited(60, 60000),
     ),
+    reviewRoutes(new ReviewService(deps.db), guard),
   );
   app.patch(
     '/api/me',
