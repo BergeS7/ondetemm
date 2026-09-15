@@ -112,6 +112,7 @@ export function createApp(config: Config, deps: Dependencies) {
       deps.db,
       guard,
       limited(config.NODE_ENV === 'test' ? 1000 : 15, 15 * 60000),
+      limited(config.NODE_ENV === 'test' ? 1000 : 8, 15 * 60000),
     ),
   );
   app.use(

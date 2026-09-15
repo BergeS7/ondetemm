@@ -16,8 +16,18 @@ export const errorHandler =
       code = 'VALIDATION_ERROR';
       message = error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
     } else if (typeof error === 'object' && error) {
-      const e = error as { code?: string; type?: string; status?: number; message?: string };
-      if (e.code === '23505') {
+      const e = error as {
+        code?: string;
+        type?: string;
+        status?: number;
+        message?: string;
+        constraint?: string;
+      };
+      if (e.code === '23505' && e.constraint === 'companies_one_per_owner') {
+        status = 409;
+        code = 'COMPANY_LIMIT_REACHED';
+        message = 'Esta conta já possui uma empresa cadastrada. Cada conta pode gerenciar apenas uma.';
+      } else if (e.code === '23505') {
         status = 409;
         code = 'CONFLICT';
         message = 'Registro já existe';
