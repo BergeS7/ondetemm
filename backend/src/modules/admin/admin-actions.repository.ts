@@ -65,3 +65,9 @@ export function cancelTrialSubscription(sql: Sql, values: unknown[] = []) {
 export function refreshCompanyPlan(sql: Sql, values: unknown[] = []) {
   return sql.query('update public.companies set plan_id=public.effective_plan(id) where id=$1', values);
 }
+export function findEmail(sql: Sql, values: unknown[] = []) {
+  return sql.query<{ email: string }>('select email from public.profiles where id=$1', values);
+}
+export function notifyUser(sql: Sql, values: unknown[] = []) {
+  return sql.query('select public.notify($1,$2,$3,$4,$5,$6)', values);
+}

@@ -2,6 +2,7 @@ import { loadConfig } from './config/env.js';
 import { PgDatabase } from './config/database.js';
 import { SupabaseAuthService } from './modules/auth/auth.service.js';
 import { SupabaseImageStorage } from './modules/uploads/uploads.service.js';
+import { SmtpMailer } from './modules/email/email.service.js';
 import { createApp } from './app.js';
 import pino from 'pino';
 const config = loadConfig(),
@@ -11,6 +12,7 @@ const app = createApp(config, {
   db,
   auth: new SupabaseAuthService(config),
   storage: new SupabaseImageStorage(config),
+  mailer: new SmtpMailer(config, logger),
 });
 const server = app.listen(config.PORT, () =>
   logger.info({ port: config.PORT }, 'Onde Tem API listening'),

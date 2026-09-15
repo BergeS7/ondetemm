@@ -23,6 +23,11 @@ export const config: Config = {
   MERCADO_PAGO_WEBHOOK_SECRET: 'test-webhook-secret',
   IP_HASH_SECRET: 'test-only-secret-with-at-least-32-characters',
   LOG_LEVEL: 'silent',
+  SMTP_HOST: '',
+  SMTP_PORT: 587,
+  SMTP_USER: '',
+  SMTP_PASSWORD: '',
+  SMTP_FROM: 'Onde Tem <no-reply@ondetemm.com>',
 };
 export class TestDatabase implements Database {
   pg = new PGlite();

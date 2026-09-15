@@ -31,6 +31,9 @@ import { analyticsRoutes } from './modules/analytics/analytics.routes.js';
 import { AnalyticsService } from './modules/analytics/analytics.service.js';
 import { reviewRoutes } from './modules/reviews/reviews.routes.js';
 import { ReviewService } from './modules/reviews/reviews.service.js';
+import { notificationRoutes } from './modules/notifications/notifications.routes.js';
+import { NotificationService } from './modules/notifications/notifications.service.js';
+import type { Mailer } from './modules/email/email.service.js';
 import { adminRoutes } from './modules/admin/admin.routes.js';
 import { AdminService } from './modules/admin/admin.service.js';
 import { controller, actor } from './shared/utils/http.js';
@@ -49,6 +52,7 @@ export interface Dependencies {
   auth: AuthGateway;
   storage: ImageStorage;
   payments?: PaymentGateway;
+  mailer?: Mailer;
 }
 export function createApp(config: Config, deps: Dependencies) {
   const app = express(),
@@ -136,6 +140,7 @@ export function createApp(config: Config, deps: Dependencies) {
       limited(60, 60000),
     ),
     reviewRoutes(new ReviewService(deps.db), guard),
+    notificationRoutes(new NotificationService(deps.db), guard),
   );
   app.patch(
     '/api/me',
@@ -157,7 +162,7 @@ export function createApp(config: Config, deps: Dependencies) {
       ),
     ),
   );
-  app.use('/api/admin', adminRoutes(new AdminService(deps.db), guard));
+  app.use('/api/admin', adminRoutes(new AdminService(deps.db, deps.mailer), guard));
   const provider = deps.payments ?? new MercadoPagoService(config.MERCADO_PAGO_ACCESS_TOKEN);
   app.use(
     '/api',
