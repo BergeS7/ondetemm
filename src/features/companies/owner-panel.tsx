@@ -1,4 +1,5 @@
 import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Area,
@@ -47,7 +48,8 @@ import {
   type AnalyticsSummary,
 } from "@/lib/api";
 import { useAuth } from "@/features/auth/auth-provider";
-import { PageLoading, ErrorNotice, buttonClass } from "@/components/site-shell";
+import { PageLoading, ErrorNotice, buttonClass, inputClass } from "@/components/site-shell";
+import { homeSearch } from "@/lib/home-search";
 import { CompanyProfilePreview } from "./company-profile-preview";
 import { type EditSection } from "./company-profile-view";
 import { CompanyForm } from "./company-form";
@@ -220,9 +222,9 @@ function DashboardTab({
           Assim que sua empresa for cadastrada, as métricas de visualizações e contatos aparecem
           aqui.
         </p>
-        <a href="/empresas/nova" className={`${buttonClass} mt-3`}>
+        <Link to="/empresas/nova" className={`${buttonClass} mt-3`}>
           Cadastrar minha empresa
-        </a>
+        </Link>
       </div>
     );
   const rating = Number(company?.average_rating) || 0,
@@ -478,11 +480,20 @@ function PerfilTab({
   const auth = useAuth(),
     cache = useQueryClient();
   const [notice, setNotice] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const submit = useMutation({
     mutationFn: (id: string) =>
       api.request(`/companies/${id}/submit`, { method: "POST", authenticated: true }),
     onSuccess: async () => {
       setNotice("Empresa enviada! A publicação acontecerá após a aprovação da administração.");
+      await cache.invalidateQueries({ queryKey: ["private", auth.user?.id] });
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) =>
+      api.request(`/companies/${id}`, { method: "DELETE", authenticated: true }),
+    onSuccess: async () => {
+      setConfirmingDelete(false);
       await cache.invalidateQueries({ queryKey: ["private", auth.user?.id] });
     },
   });
@@ -534,10 +545,10 @@ function PerfilTab({
           <p className="mx-auto my-3 max-w-md text-sm text-muted-foreground">
             Você ainda não cadastrou uma empresa. Crie seu perfil e envie para aprovação.
           </p>
-          <a href="/empresas/nova" className={`${buttonClass} mt-3`}>
+          <Link to="/empresas/nova" className={`${buttonClass} mt-3`}>
             <Plus className="h-4 w-4" />
             Cadastrar minha empresa
-          </a>
+          </Link>
         </div>
       ) : (
         <>
@@ -575,6 +586,52 @@ function PerfilTab({
             section={editSection}
             onClose={() => onEditSection(null)}
           />
+          <div className="mt-8 rounded-2xl border border-danger/30 bg-danger/5 p-5">
+            <h2 className="font-bold text-danger">Excluir empresa</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              A empresa sai da busca e do perfil público imediatamente. Fotos, avaliações e o
+              histórico de assinaturas são preservados para fins de auditoria, mas deixam de ficar
+              visíveis. Esta ação não pode ser desfeita pelo painel — fale com a administração para
+              restaurar o cadastro.
+            </p>
+            <button
+              type="button"
+              className="mt-3 rounded-lg border border-danger/40 px-4 py-2 text-sm font-semibold text-danger hover:bg-danger/10"
+              onClick={() => setConfirmingDelete(true)}
+            >
+              Excluir minha empresa
+            </button>
+          </div>
+          <Dialog open={confirmingDelete} onOpenChange={(open) => !open && setConfirmingDelete(false)}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Excluir "{company.name}"?</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                A empresa sairá imediatamente da busca e do perfil público. Esta ação não pode ser
+                desfeita por aqui.
+              </p>
+              {remove.error && <ErrorNotice>{message(remove.error)}</ErrorNotice>}
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  className="rounded-lg border px-4 py-2 text-sm font-semibold"
+                  disabled={remove.isPending}
+                  onClick={() => setConfirmingDelete(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-danger-foreground disabled:opacity-50"
+                  disabled={remove.isPending}
+                  onClick={() => remove.mutate(company.id)}
+                >
+                  {remove.isPending ? "Excluindo…" : "Sim, excluir"}
+                </button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>
@@ -812,28 +869,232 @@ function PagamentosTab({ company }: { company: Company | undefined }) {
   );
 }
 
+interface NotificationRow {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+function useNotifications() {
+  const auth = useAuth();
+  return useQuery({
+    queryKey: ["private", auth.user?.id, "notifications"],
+    queryFn: ({ signal }) =>
+      api.request<ApiPage<NotificationRow>>("/notifications?limit=50", {
+        authenticated: true,
+        signal,
+      }),
+    enabled: !!auth.user,
+  });
+}
+export function useUnreadNotifications() {
+  const auth = useAuth();
+  return useQuery({
+    queryKey: ["private", auth.user?.id, "notifications", "unread-count"],
+    queryFn: ({ signal }) =>
+      api.request<{ count: number }>("/notifications/unread-count", {
+        authenticated: true,
+        signal,
+      }),
+    enabled: !!auth.user,
+    refetchInterval: 60000,
+  });
+}
 function NotificacoesTab() {
+  const auth = useAuth(),
+    cache = useQueryClient();
+  const notifications = useNotifications();
+  const key = ["private", auth.user?.id, "notifications"];
+  const markRead = useMutation({
+    mutationFn: (id: string) =>
+      api.request(`/notifications/${id}/read`, { method: "POST", authenticated: true }),
+    onSuccess: () =>
+      Promise.all([
+        cache.invalidateQueries({ queryKey: key }),
+        cache.invalidateQueries({ queryKey: [...key, "unread-count"] }),
+      ]),
+  });
+  const markAllRead = useMutation({
+    mutationFn: () =>
+      api.request("/notifications/read-all", { method: "POST", authenticated: true }),
+    onSuccess: () =>
+      Promise.all([
+        cache.invalidateQueries({ queryKey: key }),
+        cache.invalidateQueries({ queryKey: [...key, "unread-count"] }),
+      ]),
+  });
+  const rows = notifications.data?.data ?? [];
+  const hasUnread = rows.some((n) => !n.read_at);
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold sm:text-3xl">Notificações</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Avisos sobre sua empresa e sua conta.</p>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold sm:text-3xl">Notificações</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Avisos sobre sua empresa e sua conta.</p>
+        </div>
+        {hasUnread && (
+          <button
+            type="button"
+            className="rounded-lg border border-border px-3 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
+            disabled={markAllRead.isPending}
+            onClick={() => markAllRead.mutate()}
+          >
+            {markAllRead.isPending ? "Marcando…" : "Marcar tudo como lido"}
+          </button>
+        )}
       </div>
-      <div className="rounded-2xl border border-dashed border-border px-6 py-14 text-center">
-        <Bell className="mx-auto mb-4 h-10 w-10 text-brand" />
-        <h2 className="text-xl font-bold">Em breve</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-          Estamos preparando avisos automáticos sobre aprovação de empresa, novas avaliações e
-          cobranças. Por enquanto, acompanhe essas atualizações em cada aba do painel.
-        </p>
-      </div>
+      {notifications.isPending ? (
+        <PageLoading text="Carregando notificações" />
+      ) : notifications.error ? (
+        <ErrorNotice onRetry={() => void notifications.refetch()}>
+          {message(notifications.error)}
+        </ErrorNotice>
+      ) : rows.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border px-6 py-14 text-center">
+          <Bell className="mx-auto mb-4 h-10 w-10 text-brand" />
+          <h2 className="text-xl font-bold">Nenhuma notificação ainda</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+            Avisos sobre aprovação de empresa, avaliações e testes grátis aparecem aqui.
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {rows.map((n) => (
+            <li
+              key={n.id}
+              className={`rounded-xl border p-4 ${n.read_at ? "border-border" : "border-brand/40 bg-brand-soft"}`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="font-semibold">{n.title}</p>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(n.created_at).toLocaleString("pt-BR")}
+                </span>
+              </div>
+              {n.body && <p className="mt-1 text-sm text-muted-foreground">{n.body}</p>}
+              {!n.read_at && (
+                <button
+                  type="button"
+                  className="mt-2 text-xs font-semibold text-brand hover:underline"
+                  disabled={markRead.isPending}
+                  onClick={() => markRead.mutate(n.id)}
+                >
+                  Marcar como lida
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
+function ChangePasswordSection() {
+  const [open, setOpen] = useState(false),
+    [password, setPassword] = useState(""),
+    [confirm, setConfirm] = useState(""),
+    [done, setDone] = useState(false);
+  const change = useMutation({
+    mutationFn: () =>
+      api.request("/auth/reset-password", {
+        method: "POST",
+        authenticated: true,
+        body: { password },
+      }),
+    onSuccess: () => {
+      setDone(true);
+      setPassword("");
+      setConfirm("");
+    },
+  });
+  if (!open)
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setDone(false);
+          change.reset();
+          setOpen(true);
+        }}
+        className="flex items-center gap-2 rounded-lg border border-border px-4 py-3 text-sm font-semibold transition-colors hover:bg-muted"
+      >
+        <KeyRound className="h-4 w-4" />
+        Alterar senha
+      </button>
+    );
+  return (
+    <form
+      className="space-y-3 rounded-lg border border-border p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (password.length >= 8 && password === confirm) change.mutate();
+      }}
+    >
+      <label className="block text-sm font-medium">
+        Nova senha
+        <input
+          type="password"
+          required
+          minLength={8}
+          maxLength={128}
+          autoFocus
+          className={`${inputClass} mt-1`}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      </label>
+      <label className="block text-sm font-medium">
+        Confirmar nova senha
+        <input
+          type="password"
+          required
+          minLength={8}
+          maxLength={128}
+          className={`${inputClass} mt-1`}
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+        />
+      </label>
+      {confirm.length > 0 && password !== confirm && (
+        <p className="text-sm text-danger">As senhas não coincidem.</p>
+      )}
+      {done && <p className="text-sm text-whats">Senha alterada com sucesso.</p>}
+      {change.error && <p className="text-sm text-danger">{message(change.error)}</p>}
+      <div className="flex gap-3">
+        <button
+          type="button"
+          className="rounded-lg border border-border px-4 py-2 text-sm font-semibold"
+          onClick={() => setOpen(false)}
+        >
+          Fechar
+        </button>
+        <button
+          className={buttonClass}
+          disabled={change.isPending || password.length < 8 || password !== confirm}
+        >
+          {change.isPending ? "Salvando…" : "Salvar nova senha"}
+        </button>
+      </div>
+    </form>
+  );
+}
 function ConfiguracoesTab() {
   const auth = useAuth();
   const [leaving, setLeaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(auth.user?.name ?? "");
+  const updateName = useMutation({
+    mutationFn: (value: string) =>
+      api.request("/me", { method: "PATCH", authenticated: true, body: { name: value } }),
+    onSuccess: async () => {
+      await auth.reload();
+      setEditing(false);
+    },
+  });
   return (
     <div>
       <div className="mb-6">
@@ -845,8 +1106,69 @@ function ConfiguracoesTab() {
           <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
             <UserRound className="h-7 w-7" />
           </span>
-          <div>
-            <p className="text-lg font-bold">{auth.user?.name}</p>
+          <div className="min-w-0 flex-1">
+            {editing ? (
+              <form
+                className="flex flex-wrap items-start gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const trimmed = name.trim();
+                  if (trimmed.length >= 2) updateName.mutate(trimmed);
+                }}
+              >
+                <label className="sr-only" htmlFor="account-name">
+                  Nome
+                </label>
+                <input
+                  id="account-name"
+                  className={`${inputClass} max-w-[220px]`}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  minLength={2}
+                  maxLength={120}
+                  required
+                  autoFocus
+                  disabled={updateName.isPending}
+                />
+                <button
+                  className={buttonClass}
+                  disabled={updateName.isPending || name.trim().length < 2}
+                >
+                  {updateName.isPending ? "Salvando…" : "Salvar"}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold hover:bg-muted"
+                  disabled={updateName.isPending}
+                  onClick={() => {
+                    setEditing(false);
+                    setName(auth.user?.name ?? "");
+                    updateName.reset();
+                  }}
+                >
+                  Cancelar
+                </button>
+                {updateName.error && (
+                  <p className="w-full text-sm text-danger">{message(updateName.error)}</p>
+                )}
+              </form>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-lg font-bold">{auth.user?.name}</p>
+                <button
+                  type="button"
+                  aria-label="Editar nome"
+                  className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-semibold text-brand hover:bg-brand-soft"
+                  onClick={() => {
+                    setName(auth.user?.name ?? "");
+                    setEditing(true);
+                  }}
+                >
+                  <SquarePen className="h-3.5 w-3.5" />
+                  Editar
+                </button>
+              </div>
+            )}
             <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Mail className="h-3.5 w-3.5" />
               {auth.user?.email}
@@ -854,13 +1176,7 @@ function ConfiguracoesTab() {
           </div>
         </div>
         <div className="mt-6 space-y-3 border-t border-border pt-5">
-          <a
-            href="/recuperar-senha"
-            className="flex items-center gap-2 rounded-lg border border-border px-4 py-3 text-sm font-semibold transition-colors hover:bg-muted"
-          >
-            <KeyRound className="h-4 w-4" />
-            Alterar senha
-          </a>
+          <ChangePasswordSection />
           <button
             disabled={leaving}
             onClick={async () => {
@@ -894,20 +1210,21 @@ export function LoggedOutGate() {
         </p>
         {auth.error && <ErrorNotice onRetry={() => void auth.reload()}>{auth.error}</ErrorNotice>}
         <div className="mt-4 flex justify-center gap-3">
-          <a href="/entrar" className={buttonClass}>
+          <Link to="/entrar" className={buttonClass}>
             Entrar
-          </a>
-          <a href="/cadastrar" className="px-4 py-3 text-sm font-semibold text-brand">
+          </Link>
+          <Link to="/cadastrar" className="px-4 py-3 text-sm font-semibold text-brand">
             Criar conta
-          </a>
+          </Link>
         </div>
-        <a
-          href="/"
+        <Link
+          to="/"
+          search={homeSearch}
           className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-brand"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Voltar ao site
-        </a>
+        </Link>
       </div>
     </div>
   );
@@ -926,6 +1243,8 @@ export function PanelChrome({
   const companies = useMyCompanies();
   const company = companies.data?.data[0];
   const initial = auth.user?.name?.[0]?.toUpperCase() ?? "?";
+  const unread = useUnreadNotifications();
+  const hasUnread = (unread.data?.count ?? 0) > 0;
   const go = (tab: Tab) => (e: MouseEvent<HTMLAnchorElement>) => {
     if (onSelectTab) {
       e.preventDefault();
@@ -936,9 +1255,9 @@ export function PanelChrome({
   return (
     <div className="flex min-h-screen bg-muted/30">
       <aside className="hidden w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground lg:flex">
-        <a href="/" className="flex items-center gap-2 px-6 py-6">
+        <Link to="/" search={homeSearch} className="flex items-center gap-2 px-6 py-6">
           <img src={brandLogo} alt="Ondetemm" className="h-10 w-auto object-contain" />
-        </a>
+        </Link>
         <nav aria-label="Navegação do painel" className="flex-1 space-y-1 px-4">
           {NAV.map((n) => (
             <a
@@ -964,21 +1283,28 @@ export function PanelChrome({
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-card/90 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
           <img src={brandLogo} alt="Ondetemm" className="h-8 w-auto object-contain lg:hidden" />
-          <a
-            href="/"
+          <Link
+            to="/"
+            search={homeSearch}
             className="hidden items-center gap-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-brand lg:flex"
           >
             <ArrowLeft className="h-4 w-4" />
             Voltar ao site
-          </a>
+          </Link>
           <div className="ml-auto flex items-center gap-3">
             <a
-              aria-label="Notificações"
+              aria-label={hasUnread ? "Notificações (novas)" : "Notificações"}
               href="/painel#notificacoes"
               onClick={go("notificacoes")}
               className="relative grid h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted"
             >
               <Bell className="h-4 w-4" />
+              {hasUnread && (
+                <span
+                  aria-hidden="true"
+                  className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-brand-orange"
+                />
+              )}
             </a>
             <a
               href="/painel#config"

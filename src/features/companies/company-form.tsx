@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import {
@@ -343,9 +344,9 @@ export function CompanyForm({
         >
           {save.isPending ? "Salvando…" : initial ? "Salvar alterações" : "Salvar cadastro"}
         </button>
-        <a href="/painel" className="text-sm text-muted-foreground underline">
+        <Link to="/painel" className="text-sm text-muted-foreground underline">
           Voltar para minhas empresas
-        </a>
+        </Link>
         <p className="w-full text-xs text-muted-foreground">
           {initial?.status === "ACTIVE"
             ? "As alterações salvas atualizam o perfil da sua empresa."
@@ -380,9 +381,9 @@ export function CompanyEditor({ id }: { id: string }) {
     <>
       <CompanyForm initial={company.data} onSaved={() => {}} />
       <div className="mt-6">
-        <a href="/painel" className={buttonClass}>
+        <Link to="/painel" className={buttonClass}>
           Ir ao painel para enviar à aprovação
-        </a>
+        </Link>
       </div>
     </>
   );

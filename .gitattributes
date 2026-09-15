@@ -1,0 +1,13 @@
+# Force LF line endings for all text files regardless of the checkout platform.
+# Without this, a Windows checkout with core.autocrlf=true rewrites every
+# tracked file to CRLF, which then fails eslint/prettier (configured for LF)
+# even though the committed blobs themselves are LF.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary

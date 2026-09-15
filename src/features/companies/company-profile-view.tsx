@@ -1,4 +1,5 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   MapPin,
@@ -36,6 +37,7 @@ import {
   type Page as ApiPage,
 } from "@/lib/api";
 import { ErrorNotice, buttonClass, CoverPlaceholder } from "@/components/site-shell";
+import { homeSearch } from "@/lib/home-search";
 import { useAuth } from "@/features/auth/auth-provider";
 import {
   Dialog,
@@ -85,6 +87,13 @@ export interface PublicProfile {
     is_closed: boolean;
   }>;
   openStatus: "OPEN" | "CLOSED";
+  seo?: {
+    title: string;
+    description: string;
+    canonical: string;
+    openGraph: { title: string; description: string; url: string; image: string | null };
+    schemaOrg: Record<string, unknown>;
+  };
 }
 const money = (value: number) =>
   Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -229,6 +238,245 @@ function ClaimBusinessButton({ companyId }: { companyId: string }) {
     </>
   );
 }
+interface ReviewRow {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  user_id: string;
+  reviewer_name: string;
+  owner_reply: string | null;
+  owner_reply_at: string | null;
+}
+function ReviewsPanel({ companyId }: { companyId: string }) {
+  const auth = useAuth();
+  const cache = useQueryClient();
+  const reviews = useQuery({
+    queryKey: ["public-reviews", companyId],
+    queryFn: ({ signal }) =>
+      api.request<ApiPage<ReviewRow>>(`/companies/${companyId}/reviews?limit=20`, { signal }),
+  });
+  const list = reviews.data?.data ?? [];
+  const mine = auth.user ? list.find((r) => r.user_id === auth.user!.id) : undefined;
+  const [editing, setEditing] = useState(false),
+    [rating, setRating] = useState(5),
+    [comment, setComment] = useState("");
+  const refresh = () => cache.invalidateQueries({ queryKey: ["public-reviews", companyId] });
+  const submit = useMutation({
+    mutationFn: () =>
+      api.request(`/companies/${companyId}/reviews`, {
+        method: "POST",
+        authenticated: true,
+        body: { rating, comment: comment.trim() || undefined },
+      }),
+    onSuccess: async () => {
+      setEditing(false);
+      await refresh();
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) =>
+      api.request(`/reviews/${id}`, { method: "DELETE", authenticated: true }),
+    onSuccess: () => refresh(),
+  });
+  function startEditing() {
+    setRating(mine?.rating ?? 5);
+    setComment(mine?.comment ?? "");
+    setEditing(true);
+  }
+  return (
+    <div className="mt-4 space-y-4">
+      {list.length > 0 && (
+        <ul className="space-y-3">
+          {list.map((r) => (
+            <li key={r.id} className="rounded-xl border border-border p-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-semibold">{r.reviewer_name}</span>
+                <Stars rating={r.rating} />
+              </div>
+              {r.comment && <p className="profile-muted mt-1">{r.comment}</p>}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {new Date(r.created_at).toLocaleDateString("pt-BR")}
+              </p>
+              {r.owner_reply && (
+                <div className="mt-2 rounded-lg bg-muted p-2.5">
+                  <p className="text-xs font-semibold text-brand">Resposta da empresa</p>
+                  <p className="profile-muted mt-0.5">{r.owner_reply}</p>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {!auth.ready ? null : !auth.user ? (
+        <p className="profile-muted">
+          <Link to="/entrar" className="underline">
+            Entre na sua conta
+          </Link>{" "}
+          para avaliar esta empresa.
+        </p>
+      ) : editing ? (
+        <form
+          className="space-y-2 rounded-xl border border-border p-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit.mutate();
+          }}
+        >
+          <label className="block text-sm font-medium">
+            Sua nota
+            <select
+              className="mt-1 block rounded-lg border border-border px-3 py-2 text-sm"
+              value={rating}
+              onChange={(e) => setRating(Number(e.target.value))}
+            >
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={n}>
+                  {n} {n === 1 ? "estrela" : "estrelas"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-medium">
+            Comentário (opcional)
+            <textarea
+              className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm"
+              maxLength={2000}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+            />
+          </label>
+          {submit.error && <p className="text-sm text-danger">{message(submit.error)}</p>}
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" className={buttonClass} disabled={submit.isPending}>
+              {submit.isPending ? "Salvando…" : mine ? "Atualizar avaliação" : "Enviar avaliação"}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold"
+              disabled={submit.isPending}
+              onClick={() => setEditing(false)}
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="flex flex-wrap gap-3">
+          <button type="button" className={buttonClass} onClick={startEditing}>
+            {mine ? "Editar minha avaliação" : "Avaliar esta empresa"}
+          </button>
+          {mine && (
+            <button
+              type="button"
+              className="rounded-lg border border-danger/30 px-4 py-2 text-sm font-semibold text-danger disabled:opacity-50"
+              disabled={remove.isPending}
+              onClick={() => remove.mutate(mine.id)}
+            >
+              {remove.isPending ? "Removendo…" : "Remover minha avaliação"}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+function OwnerReviewsPanel({ companyId, empty }: { companyId: string; empty: boolean }) {
+  const cache = useQueryClient();
+  const reviews = useQuery({
+    queryKey: ["public-reviews", companyId],
+    queryFn: ({ signal }) =>
+      api.request<ApiPage<ReviewRow>>(`/companies/${companyId}/reviews?limit=20`, { signal }),
+  });
+  const [replyingTo, setReplyingTo] = useState<string | null>(null),
+    [reply, setReply] = useState("");
+  const submitReply = useMutation({
+    mutationFn: (id: string) =>
+      api.request(`/reviews/${id}/reply`, {
+        method: "POST",
+        authenticated: true,
+        body: { reply: reply.trim() || null },
+      }),
+    onSuccess: async () => {
+      setReplyingTo(null);
+      await cache.invalidateQueries({ queryKey: ["public-reviews", companyId] });
+    },
+  });
+  const list = reviews.data?.data ?? [];
+  if (empty && !reviews.isPending)
+    return <p className="profile-empty">Esta empresa ainda não tem avaliações.</p>;
+  if (reviews.isPending) return <p className="profile-muted">Carregando avaliações…</p>;
+  return (
+    <ul className="mt-2 space-y-3">
+      {list.map((r) => (
+        <li key={r.id} className="rounded-xl border border-border p-3 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-semibold">{r.reviewer_name}</span>
+            <Stars rating={r.rating} />
+          </div>
+          {r.comment && <p className="profile-muted mt-1">{r.comment}</p>}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {new Date(r.created_at).toLocaleDateString("pt-BR")}
+          </p>
+          {r.owner_reply && replyingTo !== r.id && (
+            <div className="mt-2 rounded-lg bg-muted p-2.5">
+              <p className="text-xs font-semibold text-brand">Sua resposta</p>
+              <p className="profile-muted mt-0.5">{r.owner_reply}</p>
+            </div>
+          )}
+          {replyingTo === r.id ? (
+            <form
+              className="mt-2 space-y-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitReply.mutate(r.id);
+              }}
+            >
+              <textarea
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                maxLength={2000}
+                placeholder="Escreva uma resposta pública para este cliente…"
+                value={reply}
+                onChange={(e) => setReply(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className={buttonClass}
+                  disabled={submitReply.isPending}
+                >
+                  {submitReply.isPending ? "Salvando…" : "Enviar resposta"}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-border px-3 py-2 text-sm font-semibold"
+                  disabled={submitReply.isPending}
+                  onClick={() => setReplyingTo(null)}
+                >
+                  Cancelar
+                </button>
+              </div>
+              {submitReply.error && (
+                <p className="text-sm text-danger">{message(submitReply.error)}</p>
+              )}
+            </form>
+          ) : (
+            <button
+              type="button"
+              className="mt-2 text-xs font-semibold text-brand hover:underline"
+              onClick={() => {
+                setReply(r.owner_reply ?? "");
+                setReplyingTo(r.id);
+              }}
+            >
+              {r.owner_reply ? "Editar resposta" : "Responder"}
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
 function EditChip({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
@@ -346,6 +594,14 @@ export function CompanyProfileView({
   }
   return (
     <div className="company-profile">
+      {data.seo && (
+        <script
+          type="application/ld+json"
+          // Structured data built server-side from real company fields only (public.service.ts);
+          // never fabricated ratings, prices or hours that the business hasn't provided.
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(data.seo.schemaOrg) }}
+        />
+      )}
       <svg width="0" height="0" aria-hidden="true" style={{ position: "absolute" }}>
         <defs>
           <linearGradient id="profile-instagram-gradient" x1="0" y1="1" x2="1" y2="0">
@@ -367,11 +623,13 @@ export function CompanyProfileView({
         <div className="profile-wrap">
           {!editable && (
             <nav aria-label="Navegação estrutural" className="profile-breadcrumb">
-              <a href="/">Início</a>
+              <Link to="/" search={homeSearch}>
+                Início
+              </Link>
               <span>›</span>
-              <a href={`/?category=${encodeURIComponent(data.categories.data[0]?.slug ?? "")}`}>
+              <Link to="/" search={{ ...homeSearch, category: data.categories.data[0]?.slug ?? "" }}>
                 {data.categories.data[0]?.name ?? "Empresas"}
-              </a>
+              </Link>
               <span>›</span>
               <span>{c.name}</span>
             </nav>
@@ -720,21 +978,19 @@ export function CompanyProfileView({
                 title="Avaliações dos clientes"
                 icon={<Star fill="#ffb400" style={{ color: "#ffb400" }} />}
               >
-                {c.reviews_count > 0 ? (
-                  <>
-                    <div className="profile-rating">
-                      <b>{rating.toLocaleString("pt-BR", { minimumFractionDigits: 1 })}</b>
-                      <div>
-                        <Stars rating={rating} />
-                        <p className="profile-muted">{c.reviews_count} avaliações</p>
-                      </div>
+                {c.reviews_count > 0 && (
+                  <div className="profile-rating">
+                    <b>{rating.toLocaleString("pt-BR", { minimumFractionDigits: 1 })}</b>
+                    <div>
+                      <Stars rating={rating} />
+                      <p className="profile-muted">{c.reviews_count} avaliações</p>
                     </div>
-                    <p className="profile-empty">
-                      Os comentários das avaliações ainda não estão disponíveis.
-                    </p>
-                  </>
+                  </div>
+                )}
+                {editable ? (
+                  <OwnerReviewsPanel companyId={c.id} empty={c.reviews_count === 0} />
                 ) : (
-                  <p className="profile-empty">Esta empresa ainda não tem avaliações.</p>
+                  <ReviewsPanel companyId={c.id} />
                 )}
               </Panel>
             </div>
@@ -879,12 +1135,13 @@ export function CompanyProfileView({
               title="Empresas semelhantes"
               icon={<Store />}
               action={
-                <a
+                <Link
                   className="profile-more"
-                  href={`/?city=${encodeURIComponent(c.city_slug)}&state=${c.state_code.toLowerCase()}`}
+                  to="/"
+                  search={{ ...homeSearch, city: c.city_slug, state: c.state_code.toLowerCase() }}
                 >
                   Ver todas <ArrowRight />
-                </a>
+                </Link>
               }
             >
               {related.isPending ? (
@@ -899,9 +1156,10 @@ export function CompanyProfileView({
                     .filter((x) => x.id !== c.id)
                     .slice(0, 4)
                     .map((x) => (
-                      <a
+                      <Link
                         key={x.id}
-                        href={`/${x.state_code.toLowerCase()}/${x.city_slug}/${x.slug}`}
+                        to="/$state/$city/$slug"
+                        params={{ state: x.state_code.toLowerCase(), city: x.city_slug, slug: x.slug }}
                       >
                         {apiImage(x.logo_url) ? (
                           <img src={apiImage(x.logo_url)} alt="" loading="lazy" />
@@ -918,7 +1176,7 @@ export function CompanyProfileView({
                             </p>
                           )}
                         </div>
-                      </a>
+                      </Link>
                     ))}
                 </div>
               ) : (

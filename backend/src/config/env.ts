@@ -19,9 +19,29 @@ const schema = z.object({
   MERCADO_PAGO_ACCESS_TOKEN: z.string().default(''),
   MERCADO_PAGO_WEBHOOK_SECRET: z.string().default(''),
   IP_HASH_SECRET: z.string().min(32),
+  // Optional: transactional emails (company approved/rejected, claim decided, trial granted).
+  // Empty SMTP_HOST disables sending — the app logs and continues instead of failing the
+  // action, the same graceful-degradation pattern as MERCADO_PAGO_ACCESS_TOKEN above.
+  SMTP_HOST: z.string().default(''),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASSWORD: z.string().default(''),
+  SMTP_FROM: z.string().default('Onde Tem <no-reply@ondetemm.com>'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
 });
 export type Config = z.infer<typeof schema>;
 export function loadConfig(): Config {
-  return schema.parse(process.env);
+  const result = schema.safeParse(process.env);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((i) => `  - ${i.path.join('.')}: ${i.message}`)
+      .join('\n');
+    // Never echo the invalid values themselves — only which variables are missing/invalid
+    // and why, so secrets never end up in startup logs.
+    console.error(
+      `Configuração inválida. Verifique as variáveis de ambiente do backend:\n${issues}`,
+    );
+    process.exit(1);
+  }
+  return result.data;
 }

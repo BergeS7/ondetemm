@@ -32,7 +32,17 @@ function mount() {
 function mockApi() {
   return vi.spyOn(api, "request").mockImplementation(async <T,>(path: string): Promise<T> => {
     if (path === "/admin/dashboard")
-      return { companies: 1, pending: 1, users: 1, active_subscriptions: 0 } as T;
+      return {
+        companies: 1,
+        pending: 1,
+        users: 1,
+        active_subscriptions: 0,
+        active_trials: 0,
+        new_companies_7d: 0,
+        pending_claims: 0,
+        revenue_this_month: 0,
+        companies_by_plan: { FREE: 1 },
+      } as T;
     if (path.startsWith("/admin/companies?"))
       return {
         data: [
@@ -61,6 +71,7 @@ it("approves only after confirmation with an authenticated request", async () =>
   const request = mockApi();
   mount();
   const user = userEvent.setup();
+  await user.click((await screen.findAllByRole("link", { name: "Empresas" }))[0]);
   await user.click(await screen.findByRole("button", { name: "Aprovar", exact: true }));
   expect(request.mock.calls.filter(([, o]) => o?.method === "POST")).toHaveLength(0);
   await user.click(screen.getByRole("button", { name: "Confirmar" }));
@@ -79,6 +90,7 @@ it("requires a reason before rejection and sends it to the API", async () => {
   const request = mockApi();
   mount();
   const user = userEvent.setup();
+  await user.click((await screen.findAllByRole("link", { name: "Empresas" }))[0]);
   await user.click(await screen.findByRole("button", { name: "Rejeitar", exact: true }));
   expect(screen.getByRole("button", { name: "Confirmar" })).toHaveProperty("disabled", true);
   await user.type(screen.getByLabelText("Motivo"), "Corrigir endereço");

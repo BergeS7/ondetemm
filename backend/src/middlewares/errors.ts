@@ -5,6 +5,7 @@ import { AppError } from '../shared/errors/index.js';
 export const errorHandler =
   (logger: Logger): ErrorRequestHandler =>
   (error: unknown, _req, res, _next) => {
+    const requestId = res.locals['requestId'] as string | undefined;
     let status = 500,
       code = 'INTERNAL_ERROR',
       message = 'Erro interno do servidor';
@@ -15,8 +16,18 @@ export const errorHandler =
       code = 'VALIDATION_ERROR';
       message = error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
     } else if (typeof error === 'object' && error) {
-      const e = error as { code?: string; type?: string; status?: number; message?: string };
-      if (e.code === '23505') {
+      const e = error as {
+        code?: string;
+        type?: string;
+        status?: number;
+        message?: string;
+        constraint?: string;
+      };
+      if (e.code === '23505' && e.constraint === 'companies_one_per_owner') {
+        status = 409;
+        code = 'COMPANY_LIMIT_REACHED';
+        message = 'Esta conta já possui uma empresa cadastrada. Cada conta pode gerenciar apenas uma.';
+      } else if (e.code === '23505') {
         status = 409;
         code = 'CONFLICT';
         message = 'Registro já existe';
@@ -50,6 +61,6 @@ export const errorHandler =
         message = 'Upload inválido';
       }
     }
-    if (status >= 500) logger.error({ err: error, code }, 'Request failed');
-    res.status(status).json({ error: { code, message } });
+    if (status >= 500) logger.error({ err: error, code, requestId }, 'Request failed');
+    res.status(status).json({ error: { code, message, requestId } });
   };

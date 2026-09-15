@@ -1,6 +1,26 @@
 import { ApiClient } from "./api-client";
-export const API_BASE =
-  (import.meta.env["VITE_API_URL"] as string | undefined)?.replace(/\/$/, "") || "/api";
+
+// A relative "/api" only resolves for browser requests (via the Vite dev proxy, or a
+// same-origin reverse proxy in production). Server-side rendering has no page origin and
+// no dev proxy to fall back on, so it needs an absolute URL — resolved separately here.
+function resolveApiBase(): string {
+  const configured = (import.meta.env["VITE_API_URL"] as string | undefined)?.replace(/\/$/, "");
+  if (typeof window !== "undefined") return configured || "/api";
+  const ssrConfigured = (
+    typeof process !== "undefined" ? process.env?.["SSR_API_URL"] : undefined
+  )?.replace(/\/$/, "");
+  const absolute = ssrConfigured || (configured && /^https?:\/\//.test(configured) ? configured : undefined);
+  if (absolute) return absolute;
+  if (import.meta.env.DEV) return "http://127.0.0.1:3001/api"; // matches vite.config.ts's dev proxy target
+  // eslint-disable-next-line no-console
+  console.error(
+    "SSR_API_URL (or an absolute VITE_API_URL) is not set: server-rendered pages cannot reach the backend " +
+      "and will fall back to client-side fetching only, losing SSR content and SEO metadata. " +
+      "Set SSR_API_URL to the backend's URL as reachable from the server process.",
+  );
+  return "/api";
+}
+export const API_BASE = resolveApiBase();
 export const api = new ApiClient(API_BASE);
 export interface Page<T> {
   data: T[];

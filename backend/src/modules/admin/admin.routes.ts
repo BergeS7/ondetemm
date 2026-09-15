@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { actor, controller, param } from '../../shared/utils/http.js';
 import { pagination, text } from '../../shared/utils/validation.js';
 import { requireRole } from '../../middlewares/auth.js';
-import { companySchema } from '../companies/companies.schemas.js';
+import { adminCompanySchema } from '../companies/companies.schemas.js';
 import type { AdminService } from './admin.service.js';
 export function adminRoutes(s: AdminService, guard: RequestHandler) {
   const r = Router();
@@ -25,14 +25,15 @@ export function adminRoutes(s: AdminService, guard: RequestHandler) {
           status: z
             .enum(['DRAFT', 'PENDING_APPROVAL', 'ACTIVE', 'REJECTED', 'SUSPENDED'])
             .optional(),
+          search: text(160).optional(),
         })
         .parse(req.query);
-      return s.companies(actor(req), q, q.status);
+      return s.companies(actor(req), q, q.status, q.search);
     }),
   );
   r.post(
     '/companies',
-    controller((req) => s.createUnclaimedCompany(actor(req), companySchema.parse(req.body)), 201),
+    controller((req) => s.createUnclaimedCompany(actor(req), adminCompanySchema.parse(req.body)), 201),
   );
   r.post(
     '/companies/:id/approve',
@@ -82,7 +83,10 @@ export function adminRoutes(s: AdminService, guard: RequestHandler) {
   );
   r.get(
     '/users',
-    controller((req) => s.list(actor(req), 'profiles', pagination.parse(req.query))),
+    controller((req) => {
+      const q = pagination.extend({ search: text(160).optional() }).parse(req.query);
+      return s.users(actor(req), q, q.search);
+    }),
   );
   r.get(
     '/plans',
@@ -100,6 +104,27 @@ export function adminRoutes(s: AdminService, guard: RequestHandler) {
     '/analytics',
     controller((req) => s.analytics(actor(req), pagination.parse(req.query))),
   );
+  r.get(
+    '/trials',
+    controller((req) => s.trials(actor(req), pagination.parse(req.query))),
+  );
+  r.post(
+    '/companies/:id/trial',
+    controller((req) => {
+      const body = z
+        .object({
+          plan_code: z.enum(['FEATURED', 'PREMIUM']),
+          days: z.coerce.number().int().min(1).max(365),
+        })
+        .strict()
+        .parse(req.body);
+      return s.grantTrial(actor(req), param(req), body.plan_code, body.days);
+    }, 201),
+  );
+  r.post(
+    '/trials/:id/cancel',
+    controller((req) => s.cancelTrial(actor(req), param(req))),
+  );
   r.post(
     '/users/:id/suspend',
     controller((req) =>
@@ -112,6 +137,10 @@ export function adminRoutes(s: AdminService, guard: RequestHandler) {
           .parse(req.body).reason,
       ),
     ),
+  );
+  r.post(
+    '/users/:id/reactivate',
+    controller((req) => s.reactivateUser(actor(req), param(req))),
   );
   return r;
 }

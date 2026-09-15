@@ -13,10 +13,10 @@ export class PlanService {
   async get(sql: Sql, companyId: string) {
     return queries.findEffectivePlan(sql, [companyId]);
   }
-  async require(sql: Sql, companyId: string, feature: keyof PlanLimits, amount = 1) {
+  async require(sql: Sql, companyId: string, feature: keyof PlanLimits, amount = 1, floor = 0) {
     const plan = await this.get(sql, companyId);
     const limits = plan.limits as unknown as PlanLimits;
-    if (Number(limits[feature]) < amount)
+    if (Math.max(Number(limits[feature]), floor) < amount)
       throw new ForbiddenError('Recurso ou período não incluído no plano');
     return plan;
   }

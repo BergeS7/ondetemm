@@ -40,6 +40,11 @@ export const companySchema = z
       .optional(),
   })
   .strict();
+export const adminCompanySchema = companySchema.extend({
+  // Free-text provenance note for admin-created unclaimed listings (e.g. "manual",
+  // "diretorio-comercial-2026"). Recorded in the audit log, never trusted as an identifier.
+  source: text(80).nullable().optional(),
+});
 export const companyPatch = companySchema
   .partial()
   .strict()

@@ -20,8 +20,9 @@ import {
   PawPrint,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { useRouterState } from "@tanstack/react-router";
+import { useRouterState, Link } from "@tanstack/react-router";
 import { useAuth } from "@/features/auth/auth-provider";
+import { homeSearch } from "@/lib/home-search";
 // UI-only guard: hides the admin link outside the designated admin account. The real
 // authorization boundary is the ADMIN role, enforced by AdminAccess and the backend.
 const ADMIN_EMAIL = "sergioberge07@gmail.com";
@@ -183,13 +184,13 @@ export function SiteShell({ children }: { children: ReactNode }) {
       </a>
       <header className="sticky top-0 z-40 border-b border-border/60 bg-brand-soft/70 shadow-[0_1px_0_0_rgba(0,0,0,0.04),0_4px_16px_-8px_rgba(0,0,0,0.08)] backdrop-blur-md supports-[backdrop-filter]:bg-brand-soft/50">
         <div className="mx-auto flex max-w-[1760px] flex-wrap items-center gap-2 px-4 py-2 xl:flex-nowrap xl:gap-5 xl:px-6">
-          <a href="/" className="shrink-0" aria-label="Ondetemm — início">
+          <Link to="/" search={homeSearch} className="shrink-0" aria-label="Ondetemm — início">
             <img
               src={brandLogo}
               alt="Ondetemm — O guia completo para encontrar tudo"
               className="h-12 w-44 scale-125 object-contain sm:w-48"
             />
-          </a>
+          </Link>
           {!isHome && (
             <form
               action="/"
@@ -225,13 +226,14 @@ export function SiteShell({ children }: { children: ReactNode }) {
             aria-label="Navegação principal"
             className="hidden items-center gap-1 whitespace-nowrap text-sm md:order-4 md:flex md:w-full md:overflow-x-auto xl:order-none xl:ml-auto xl:w-auto"
           >
-            <a
-              href="/"
+            <Link
+              to="/"
+              search={homeSearch}
               className="flex items-center gap-1.5 rounded-full px-3.5 py-2 font-medium text-foreground/80 transition-colors hover:bg-brand-soft hover:text-brand"
             >
               <Home aria-hidden="true" className="h-4 w-4" />
               Início
-            </a>
+            </Link>
             <a
               href="/#categorias"
               className="flex items-center gap-1.5 rounded-full px-3.5 py-2 font-medium text-foreground/80 transition-colors hover:bg-brand-soft hover:text-brand"
@@ -248,29 +250,29 @@ export function SiteShell({ children }: { children: ReactNode }) {
             </a>
           </nav>
           <div className="ml-auto hidden max-w-full flex-wrap items-center gap-2.5 whitespace-nowrap text-sm md:flex xl:ml-0 xl:flex-nowrap">
-            <a
-              href="/empresas/nova"
+            <Link
+              to="/empresas/nova"
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand-orange to-amber-500 px-4 py-2 font-semibold text-brand-orange-foreground shadow-sm shadow-brand-orange/25 transition hover:shadow-md hover:shadow-brand-orange/40"
             >
               <Plus aria-hidden="true" className="h-4 w-4" />
               Cadastrar empresa
-            </a>
+            </Link>
             {auth.user ? (
               <>
                 {auth.user.role === "ADMIN" && auth.user.email === ADMIN_EMAIL && (
-                  <a
-                    href="/admin"
+                  <Link
+                    to="/admin"
                     className="rounded-full px-3 py-2 font-semibold text-brand transition-colors hover:bg-brand-soft"
                   >
                     Administração
-                  </a>
+                  </Link>
                 )}
-                <a
-                  href="/painel"
+                <Link
+                  to="/painel"
                   className="rounded-full px-3 py-2 font-semibold text-brand transition-colors hover:bg-brand-soft"
                 >
                   Minhas empresas
-                </a>
+                </Link>
                 <button
                   aria-label="Sair da conta"
                   disabled={leaving}
@@ -291,13 +293,13 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 </button>
               </>
             ) : (
-              <a
-                href="/entrar"
+              <Link
+                to="/entrar"
                 className="inline-flex min-h-10 items-center gap-2 rounded-full border border-brand/40 px-4 py-2 font-semibold text-brand transition-colors hover:bg-brand-soft"
               >
                 <UserRound aria-hidden="true" className="h-4 w-4" />
                 Entrar
-              </a>
+              </Link>
             )}
           </div>
         </div>
@@ -309,14 +311,15 @@ export function SiteShell({ children }: { children: ReactNode }) {
         aria-label="Navegação mobile"
         className="fixed inset-x-0 bottom-3 z-50 mx-auto flex w-[92%] max-w-sm items-center justify-between rounded-full border border-border bg-card/95 px-2 py-2 shadow-lg backdrop-blur-sm md:hidden"
       >
-        <a
-          href="/"
+        <Link
+          to="/"
+          search={homeSearch}
           aria-label="Início"
           className="flex flex-1 flex-col items-center gap-0.5 rounded-full py-1.5 text-muted-foreground hover:text-brand"
         >
           <Home aria-hidden="true" className="h-5 w-5" />
           <span className="text-[10px] font-medium">Início</span>
-        </a>
+        </Link>
         <a
           href="/#categorias"
           aria-label="Categorias"
@@ -325,13 +328,13 @@ export function SiteShell({ children }: { children: ReactNode }) {
           <LayoutGrid aria-hidden="true" className="h-5 w-5" />
           <span className="text-[10px] font-medium">Categorias</span>
         </a>
-        <a
-          href="/empresas/nova"
+        <Link
+          to="/empresas/nova"
           aria-label="Cadastrar empresa"
           className="mx-1 -mt-7 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-orange to-amber-500 text-brand-orange-foreground shadow-lg shadow-brand-orange/30 ring-4 ring-background transition hover:opacity-90"
         >
           <Plus aria-hidden="true" className="h-6 w-6" />
-        </a>
+        </Link>
         <button
           type="button"
           aria-label="Buscar empresas"
@@ -341,21 +344,21 @@ export function SiteShell({ children }: { children: ReactNode }) {
           <Search aria-hidden="true" className="h-5 w-5" />
           <span className="text-[10px] font-medium">Buscar</span>
         </button>
-        <a
-          href={auth.user ? "/painel" : "/entrar"}
+        <Link
+          to={auth.user ? "/painel" : "/entrar"}
           aria-label={auth.user ? "Minhas empresas" : "Entrar"}
           className="flex flex-1 flex-col items-center gap-0.5 rounded-full py-1.5 text-muted-foreground hover:text-brand"
         >
           <UserRound aria-hidden="true" className="h-5 w-5" />
           <span className="text-[10px] font-medium">{auth.user ? "Perfil" : "Entrar"}</span>
-        </a>
+        </Link>
       </nav>
       <footer className="mt-4 border-t border-border bg-card pb-24 md:pb-0">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <a href="/" aria-label="Ondetemm — início">
+            <Link to="/" search={homeSearch} aria-label="Ondetemm — início">
               <img src={brandLogo} alt="Ondetemm" className="h-20 w-48 object-contain" />
-            </a>
+            </Link>
             <p className="mt-2 text-xs text-muted-foreground">
               Comércio e serviços mais perto de você.
             </p>
@@ -421,12 +424,12 @@ export function RequireAccount({ children }: { children: ReactNode }) {
         </p>
         {auth.error && <ErrorNotice onRetry={() => void auth.reload()}>{auth.error}</ErrorNotice>}
         <div className="flex justify-center gap-3">
-          <a href="/entrar" className={buttonClass}>
+          <Link to="/entrar" className={buttonClass}>
             Entrar
-          </a>
-          <a href="/cadastrar" className="px-4 py-3 text-sm font-semibold text-brand">
+          </Link>
+          <Link to="/cadastrar" className="px-4 py-3 text-sm font-semibold text-brand">
             Criar conta
-          </a>
+          </Link>
         </div>
       </div>
     );

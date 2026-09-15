@@ -1,5 +1,5 @@
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { z } from "zod";
@@ -330,7 +330,7 @@ type Filters = z.infer<typeof searchSchema>;
 function SearchCard({ company: c }: { company: SearchCompany }) {
   const cover = apiImage(c.cover_url),
     logo = apiImage(c.logo_url),
-    href = `/${c.state_code.toLowerCase()}/${c.city_slug}/${c.slug}`;
+    profileParams = { state: c.state_code.toLowerCase(), city: c.city_slug, slug: c.slug };
   const rating = Number(c.average_rating),
     initials = c.name
       .split(/\s+/)
@@ -341,8 +341,9 @@ function SearchCard({ company: c }: { company: SearchCompany }) {
       .toUpperCase();
   return (
     <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-      <a
-        href={href}
+      <Link
+        to="/$state/$city/$slug"
+        params={profileParams}
         aria-label={`Ver perfil de ${c.name}`}
         className="relative flex h-36 items-center justify-center overflow-hidden bg-brand-soft"
       >
@@ -360,10 +361,11 @@ function SearchCard({ company: c }: { company: SearchCompany }) {
             Destaque
           </span>
         )}
-      </a>
+      </Link>
       <div className="flex min-h-[96px] gap-4 px-4">
-        <a
-          href={href}
+        <Link
+          to="/$state/$city/$slug"
+          params={profileParams}
           aria-label={`Perfil de ${c.name}`}
           className="relative -mt-8 grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-white bg-white text-2xl font-bold text-brand shadow-sm"
         >
@@ -377,15 +379,16 @@ function SearchCard({ company: c }: { company: SearchCompany }) {
           ) : (
             <span>{initials}</span>
           )}
-        </a>
+        </Link>
         <div className="min-w-0 flex-1 pt-2.5">
-          <a
-            href={href}
+          <Link
+            to="/$state/$city/$slug"
+            params={profileParams}
             title={c.name}
             className="block truncate text-base font-bold leading-6 tracking-tight text-slate-950 hover:text-brand"
           >
             {c.name}
-          </a>
+          </Link>
           <p
             title={c.short_description}
             className="flex items-center gap-1.5 text-xs leading-5 text-slate-500"
@@ -440,12 +443,13 @@ function SearchCard({ company: c }: { company: SearchCompany }) {
             Sem WhatsApp
           </span>
         )}
-        <a
-          href={href}
+        <Link
+          to="/$state/$city/$slug"
+          params={profileParams}
           className="inline-flex min-h-11 items-center justify-center rounded-md border border-blue-200 bg-gradient-to-b from-white to-blue-50 px-3 py-2 text-sm font-semibold text-brand hover:bg-blue-50"
         >
           Ver perfil
-        </a>
+        </Link>
       </div>
     </article>
   );
@@ -980,9 +984,9 @@ function Home() {
               >
                 Limpar filtros
               </button>
-              <a href="/empresas/nova" className={buttonClass}>
+              <Link to="/empresas/nova" className={buttonClass}>
                 Cadastrar empresa
-              </a>
+              </Link>
             </div>
           </div>
         ) : (

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { useAuth } from "./auth-provider";
 import { api, message } from "@/lib/api";
 import { buttonClass, inputClass, ErrorNotice } from "@/components/site-shell";
@@ -53,10 +54,9 @@ export function AuthForm({
         ? "Crie sua conta"
         : "Recuperar senha";
   return (
-    <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-brand">Onde Tem</p>
-      <h1 className="text-2xl font-bold">{title}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
+    <div className="w-full rounded-3xl border border-slate-200/80 bg-white p-6 shadow-[0_12px_48px_-20px_rgba(15,50,90,0.22)] sm:p-9">
+      <h1 className="text-center text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
+      <p className="mt-3 text-center text-sm leading-relaxed text-muted-foreground">
         {mode === "register"
           ? "Cadastre seu negócio e ajude mais pessoas a encontrar você."
           : mode === "login"
@@ -115,9 +115,11 @@ export function AuthForm({
               disabled={busy}
               className={`${inputClass} mt-1.5`}
             />
-            <span className="mt-1 block text-xs font-normal text-muted-foreground">
-              Pelo menos 8 caracteres.
-            </span>
+            {mode === "register" && (
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                Pelo menos 8 caracteres.
+              </span>
+            )}
           </label>
         )}
         <button disabled={busy} className={`${buttonClass} w-full`}>
@@ -133,17 +135,17 @@ export function AuthForm({
       <div className="mt-5 flex flex-wrap justify-between gap-3 text-sm text-brand">
         {mode === "login" ? (
           <>
-            <a href="/cadastrar" className="underline">
+            <Link to="/cadastrar" className="underline">
               Criar conta
-            </a>
-            <a href="/recuperar-senha" className="underline">
+            </Link>
+            <Link to="/recuperar-senha" className="underline">
               Esqueci minha senha
-            </a>
+            </Link>
           </>
         ) : (
-          <a href="/entrar" className="underline">
+          <Link to="/entrar" className="underline">
             Voltar para entrar
-          </a>
+          </Link>
         )}
       </div>
     </div>

@@ -23,10 +23,17 @@ import { searchRoutes } from './modules/search/search.routes.js';
 import { SearchService } from './modules/search/search.service.js';
 import { publicRoutes } from './modules/companies/public.routes.js';
 import { PublicCompanyService } from './modules/companies/public.service.js';
+import { sitemapRoutes } from './modules/companies/sitemap.routes.js';
+import { SitemapService } from './modules/companies/sitemap.service.js';
 import { uploadRoutes } from './modules/uploads/uploads.routes.js';
 import { UploadService } from './modules/uploads/uploads.service.js';
 import { analyticsRoutes } from './modules/analytics/analytics.routes.js';
 import { AnalyticsService } from './modules/analytics/analytics.service.js';
+import { reviewRoutes } from './modules/reviews/reviews.routes.js';
+import { ReviewService } from './modules/reviews/reviews.service.js';
+import { notificationRoutes } from './modules/notifications/notifications.routes.js';
+import { NotificationService } from './modules/notifications/notifications.service.js';
+import type { Mailer } from './modules/email/email.service.js';
 import { adminRoutes } from './modules/admin/admin.routes.js';
 import { AdminService } from './modules/admin/admin.service.js';
 import { controller, actor } from './shared/utils/http.js';
@@ -45,6 +52,7 @@ export interface Dependencies {
   auth: AuthGateway;
   storage: ImageStorage;
   payments?: PaymentGateway;
+  mailer?: Mailer;
 }
 export function createApp(config: Config, deps: Dependencies) {
   const app = express(),
@@ -77,6 +85,7 @@ export function createApp(config: Config, deps: Dependencies) {
   app.use((req, res, next) => {
     const id = randomUUID(),
       start = Date.now();
+    res.locals['requestId'] = id;
     res.set('X-Request-Id', id);
     res.on('finish', () =>
       logger.info(
@@ -109,6 +118,7 @@ export function createApp(config: Config, deps: Dependencies) {
       deps.db,
       guard,
       limited(config.NODE_ENV === 'test' ? 1000 : 15, 15 * 60000),
+      limited(config.NODE_ENV === 'test' ? 1000 : 8, 15 * 60000),
     ),
   );
   app.use(
@@ -122,12 +132,15 @@ export function createApp(config: Config, deps: Dependencies) {
     promotionRoutes(deps.db, companies, guard),
     searchRoutes(new SearchService(deps.db)),
     publicRoutes(new PublicCompanyService(deps.db, config.PUBLIC_SITE_URL)),
+    sitemapRoutes(new SitemapService(deps.db, config.PUBLIC_SITE_URL)),
     uploadRoutes(new UploadService(deps.db, companies, deps.storage), guard),
     analyticsRoutes(
       new AnalyticsService(deps.db, companies, config.IP_HASH_SECRET),
       guard,
       limited(60, 60000),
     ),
+    reviewRoutes(new ReviewService(deps.db), guard),
+    notificationRoutes(new NotificationService(deps.db), guard),
   );
   app.patch(
     '/api/me',
@@ -149,7 +162,7 @@ export function createApp(config: Config, deps: Dependencies) {
       ),
     ),
   );
-  app.use('/api/admin', adminRoutes(new AdminService(deps.db), guard));
+  app.use('/api/admin', adminRoutes(new AdminService(deps.db, deps.mailer), guard));
   const provider = deps.payments ?? new MercadoPagoService(config.MERCADO_PAGO_ACCESS_TOKEN);
   app.use(
     '/api',
@@ -161,7 +174,13 @@ export function createApp(config: Config, deps: Dependencies) {
     ),
   );
   app.use((_req, res) =>
-    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Rota não encontrada' } }),
+    res.status(404).json({
+      error: {
+        code: 'NOT_FOUND',
+        message: 'Rota não encontrada',
+        requestId: res.locals['requestId'] as string | undefined,
+      },
+    }),
   );
   app.use(errorHandler(logger));
   return app;

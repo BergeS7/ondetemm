@@ -1,10 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, message } from "@/lib/api";
 import { useAuth } from "@/features/auth/auth-provider";
 import { consumeSessionLink } from "@/features/auth/session-link";
 import { SiteShell, ErrorNotice, Loading, inputClass, buttonClass } from "@/components/site-shell";
-export const Route = createFileRoute("/auth/reset-password")({ component: Page });
+export const Route = createFileRoute("/auth/reset-password")({
+  head: () => ({ meta: [{ name: "robots", content: "noindex, nofollow" }] }),
+  component: Page,
+});
 function Page() {
   const auth = useAuth(),
     started = useRef(false);
@@ -52,16 +55,16 @@ function Page() {
         ) : success ? (
           <p role="status">
             Senha alterada.{" "}
-            <a href="/painel" className="text-brand underline">
+            <Link to="/painel" className="text-brand underline">
               Ir para minhas empresas
-            </a>
+            </Link>
           </p>
         ) : !auth.user ? (
           <p>
             Abra o link recebido por e-mail.{" "}
-            <a href="/recuperar-senha" className="text-brand underline">
+            <Link to="/recuperar-senha" className="text-brand underline">
               Solicitar um novo link
-            </a>
+            </Link>
           </p>
         ) : (
           <form onSubmit={submit} className="space-y-5">
