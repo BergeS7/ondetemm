@@ -78,6 +78,26 @@ describe('Reviews', () => {
     expect(list.body.data[0].reviewer_name).toBeTruthy();
     expect(JSON.stringify(list.body.data[0])).not.toMatch(/@example\.com/);
   });
+  it('lets the company owner reply, but not edit the rating/comment', async () => {
+    const mine = await request(app)
+      .get(`/api/companies/${company}/reviews/mine`)
+      .set('Authorization', bearer(reviewer))
+      .expect(200);
+    await request(app)
+      .post(`/api/reviews/${mine.body.id}/reply`)
+      .set('Authorization', bearer(other))
+      .send({ reply: 'Não sou o dono' })
+      .expect(403);
+    const replied = await request(app)
+      .post(`/api/reviews/${mine.body.id}/reply`)
+      .set('Authorization', bearer(owner))
+      .send({ reply: 'Obrigado pela avaliação!' })
+      .expect(200);
+    expect(replied.body.owner_reply).toBe('Obrigado pela avaliação!');
+    expect(replied.body.rating).toBe(2);
+    const list = await request(app).get(`/api/companies/${company}/reviews`).expect(200);
+    expect(list.body.data[0].owner_reply).toBe('Obrigado pela avaliação!');
+  });
   it('blocks deleting someone else\'s review', async () => {
     const mine = await request(app)
       .get(`/api/companies/${company}/reviews/mine`)

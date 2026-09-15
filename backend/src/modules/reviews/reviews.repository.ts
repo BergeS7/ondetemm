@@ -19,11 +19,14 @@ export function deleteReview(sql: Sql, values: unknown[] = []) {
 export function listPublicReviews(sql: Sql, values: unknown[] = [], page: Page) {
   return paged(
     sql,
-    'select id,company_id,rating,comment,created_at,user_id,reviewer_name from public.public_reviews where company_id=$1 order by created_at desc',
+    'select id,company_id,rating,comment,created_at,user_id,reviewer_name,owner_reply,owner_reply_at from public.public_reviews where company_id=$1 order by created_at desc',
     values,
     page,
   );
 }
 export function findOwnReview(sql: Sql, values: unknown[] = []) {
   return sql.query('select * from public.reviews where company_id=$1 and user_id=$2', values);
+}
+export function replyToReview(sql: Sql, values: unknown[] = []) {
+  return one(sql, 'select * from public.reply_to_review($1,$2)', values);
 }

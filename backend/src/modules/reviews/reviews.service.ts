@@ -24,4 +24,7 @@ export class ReviewService {
     if (!rows.rows.length) throw new NotFoundError('Você ainda não avaliou esta empresa');
     return rows.rows[0];
   }
+  reply(actor: Actor, id: string, reply: string | null) {
+    return this.db.run(actor, (s) => queries.replyToReview(s, [id, reply]));
+  }
 }

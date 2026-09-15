@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import type { RequestHandler } from 'express';
+import { z } from 'zod';
 import { actor, controller, param } from '../../shared/utils/http.js';
-import { pagination, id } from '../../shared/utils/validation.js';
+import { pagination, id, text } from '../../shared/utils/validation.js';
 import { reviewSchema } from './reviews.schemas.js';
 import type { ReviewService } from './reviews.service.js';
 export function reviewRoutes(s: ReviewService, guard: RequestHandler) {
@@ -24,6 +25,17 @@ export function reviewRoutes(s: ReviewService, guard: RequestHandler) {
     '/reviews/:id',
     guard,
     controller((req) => s.remove(actor(req), param(req))),
+  );
+  r.post(
+    '/reviews/:id/reply',
+    guard,
+    controller((req) =>
+      s.reply(
+        actor(req),
+        param(req),
+        z.object({ reply: text(2000).nullable() }).strict().parse(req.body).reply,
+      ),
+    ),
   );
   return r;
 }
