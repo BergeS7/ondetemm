@@ -71,6 +71,7 @@ it("approves only after confirmation with an authenticated request", async () =>
   const request = mockApi();
   mount();
   const user = userEvent.setup();
+  await user.click((await screen.findAllByRole("link", { name: "Empresas" }))[0]);
   await user.click(await screen.findByRole("button", { name: "Aprovar", exact: true }));
   expect(request.mock.calls.filter(([, o]) => o?.method === "POST")).toHaveLength(0);
   await user.click(screen.getByRole("button", { name: "Confirmar" }));
@@ -89,6 +90,7 @@ it("requires a reason before rejection and sends it to the API", async () => {
   const request = mockApi();
   mount();
   const user = userEvent.setup();
+  await user.click((await screen.findAllByRole("link", { name: "Empresas" }))[0]);
   await user.click(await screen.findByRole("button", { name: "Rejeitar", exact: true }));
   expect(screen.getByRole("button", { name: "Confirmar" })).toHaveProperty("disabled", true);
   await user.type(screen.getByLabelText("Motivo"), "Corrigir endereço");

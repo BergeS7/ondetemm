@@ -1,6 +1,18 @@
-import { useState, type ReactNode } from "react";
+import { useState, type MouseEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  LayoutDashboard,
+  Store,
+  Handshake,
+  Users,
+  Gift,
+  BarChart3,
+  History,
+  ArrowLeft,
+  LogOut,
+  ShieldAlert,
+} from "lucide-react";
 import { api, message, type Page, type Company, type User } from "@/lib/api";
 import { useAuth } from "@/features/auth/auth-provider";
 import {
@@ -10,29 +22,55 @@ import {
   buttonClass,
   inputClass,
 } from "@/components/site-shell";
+import { homeSearch } from "@/lib/home-search";
 import { CompanyForm } from "@/features/companies/company-form";
 import { CompanyManager } from "@/features/companies/company-manager";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import brandLogo from "@/assets/ondetemm-logo-v2.png";
 
 export function AdminAccess({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const auth = useAuth();
   return (
     <RequireAccount>
-      {user?.role === "ADMIN" ? (
+      {auth.user?.role === "ADMIN" ? (
         children
       ) : (
-        <div role="alert" className="rounded-xl border p-8">
-          <h1 className="text-2xl font-bold">Acesso restrito</h1>
-          <p className="mt-3">Esta área é exclusiva para administradores.</p>
-          <Link to="/painel" className="mt-4 inline-block text-brand">
-            Voltar para minhas empresas
-          </Link>
+        <div className="grid min-h-dvh place-items-center bg-muted/30 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+            <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-danger/10 text-danger">
+              <ShieldAlert className="h-7 w-7" />
+            </span>
+            <h1 className="mt-5 text-2xl font-bold">Acesso restrito</h1>
+            <p className="my-3 text-sm text-muted-foreground">
+              Esta área é exclusiva para administradores do Onde Tem.
+            </p>
+            <Link to="/painel" className={`${buttonClass} mt-3`}>
+              Voltar para minhas empresas
+            </Link>
+            <Link
+              to="/"
+              search={homeSearch}
+              className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-brand"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Voltar ao site
+            </Link>
+          </div>
         </div>
       )}
     </RequireAccount>
   );
 }
-type Tab = "companies" | "claims" | "users" | "analytics" | "trials" | "audit";
+type Tab = "dashboard" | "companies" | "claims" | "users" | "analytics" | "trials" | "audit";
+const NAV: { key: Tab; label: string; icon: typeof LayoutDashboard }[] = [
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "companies", label: "Empresas", icon: Store },
+  { key: "claims", label: "Reivindicações", icon: Handshake },
+  { key: "users", label: "Usuários", icon: Users },
+  { key: "trials", label: "Testes grátis", icon: Gift },
+  { key: "analytics", label: "Métricas", icon: BarChart3 },
+  { key: "audit", label: "Histórico de ações", icon: History },
+];
 type Action = {
   path: string;
   name: string;
@@ -95,10 +133,123 @@ const events: Record<string, string> = {
   WHATSAPP_CLICK: "Cliques no WhatsApp",
   PHONE_CLICK: "Cliques no telefone",
 };
+function AdminShell({
+  active,
+  onSelectTab,
+  children,
+}: {
+  active: Tab;
+  onSelectTab: (tab: Tab) => void;
+  children: ReactNode;
+}) {
+  const auth = useAuth();
+  const [leaving, setLeaving] = useState(false);
+  const initial = auth.user?.name?.[0]?.toUpperCase() ?? "A";
+  const go = (tab: Tab) => (e: MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    onSelectTab(tab);
+  };
+  return (
+    <div className="flex min-h-dvh bg-muted/30">
+      <aside className="hidden w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground lg:flex">
+        <Link to="/" search={homeSearch} className="flex items-center gap-2 px-6 py-6">
+          <img src={brandLogo} alt="Ondetemm" className="h-10 w-auto object-contain" />
+        </Link>
+        <p className="px-6 pb-4 text-xs font-bold uppercase tracking-wider text-sidebar-foreground/50">
+          Administração
+        </p>
+        <nav aria-label="Navegação administrativa" className="flex-1 space-y-1 px-4">
+          {NAV.map((n) => (
+            <a
+              key={n.key}
+              href="#"
+              onClick={go(n.key)}
+              aria-current={active === n.key ? "page" : undefined}
+              className={`flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-sm font-semibold transition-colors ${
+                active === n.key
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              }`}
+            >
+              <n.icon className="h-4 w-4 shrink-0" />
+              {n.label}
+            </a>
+          ))}
+        </nav>
+        <div className="mx-4 mb-6 space-y-3 border-t border-sidebar-border pt-4">
+          <div className="flex items-center gap-2.5 px-2">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand text-sm font-bold text-brand-foreground">
+              {initial}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold leading-tight">{auth.user?.name}</p>
+              <p className="truncate text-xs leading-tight text-sidebar-foreground/60">
+                {auth.user?.email}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={leaving}
+            onClick={async () => {
+              setLeaving(true);
+              try {
+                await auth.logout();
+              } finally {
+                setLeaving(false);
+              }
+            }}
+            className="flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-sm font-semibold text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            <LogOut className="h-4 w-4" />
+            {leaving ? "Saindo…" : "Sair"}
+          </button>
+        </div>
+      </aside>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-card/90 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
+          <img src={brandLogo} alt="Ondetemm" className="h-8 w-auto object-contain lg:hidden" />
+          <Link
+            to="/"
+            search={homeSearch}
+            className="hidden items-center gap-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-brand lg:flex"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar ao site
+          </Link>
+          <span className="ml-auto hidden text-sm font-semibold text-muted-foreground lg:inline">
+            {NAV.find((n) => n.key === active)?.label}
+          </span>
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand text-sm font-bold text-brand-foreground lg:hidden">
+            {initial}
+          </span>
+        </header>
+        <nav
+          aria-label="Navegação administrativa"
+          className="flex gap-1 overflow-x-auto whitespace-nowrap border-b border-border bg-card px-4 py-2 lg:hidden"
+        >
+          {NAV.map((n) => (
+            <a
+              key={n.key}
+              href="#"
+              onClick={go(n.key)}
+              aria-current={active === n.key ? "page" : undefined}
+              className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold transition-colors ${active === n.key ? "border-brand bg-brand text-brand-foreground" : "border-border text-foreground/80"}`}
+            >
+              <n.icon className="h-4 w-4" />
+              {n.label}
+            </a>
+          ))}
+        </nav>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+      </div>
+    </div>
+  );
+}
 export function AdminPanel() {
   const { user } = useAuth(),
     cache = useQueryClient();
-  const [tab, setTab] = useState<Tab>("companies"),
+  const [tab, setTab] = useState<Tab>("dashboard"),
     [page, setPage] = useState(1),
     [status, setStatus] = useState("PENDING_APPROVAL"),
     [search, setSearch] = useState(""),
@@ -136,6 +287,7 @@ export function AdminPanel() {
         `/admin/${endpoint}?page=${page}&limit=10${tab === "companies" && status ? `&status=${status}` : ""}${tab === "claims" ? "&status=PENDING" : ""}${searchable && search ? `&search=${encodeURIComponent(search)}` : ""}`,
         { authenticated: true, signal },
       ),
+    enabled: tab !== "dashboard",
   });
   const grantMutation = useMutation({
     mutationFn: ({ company, plan_code, days }: { company: string; plan_code: string; days: number }) =>
@@ -185,89 +337,98 @@ export function AdminPanel() {
     setAction(target);
   }
   const needsReason = action?.kind === "reject" || (action?.user && action.kind === "suspend");
+  const tabCopy: Record<Tab, { title: string; description: string }> = {
+    dashboard: {
+      title: "Dashboard",
+      description: "Visão geral da atividade do Onde Tem.",
+    },
+    companies: {
+      title: "Empresas",
+      description: "Revise, aprove, rejeite e gerencie os cadastros de empresas.",
+    },
+    claims: {
+      title: "Reivindicações de empresas",
+      description: "Analise pedidos de posse sobre empresas sem proprietário.",
+    },
+    users: { title: "Usuários", description: "Consulte, suspenda e reative contas." },
+    trials: {
+      title: "Testes grátis",
+      description: "Acompanhe e cancele testes grátis concedidos a empresas.",
+    },
+    analytics: {
+      title: "Métricas",
+      description:
+        "Interações registradas nos últimos 30 dias, agrupadas por empresa. Os identificadores permitem relacionar os dados aos cadastros.",
+    },
+    audit: {
+      title: "Histórico de ações",
+      description: "Toda aprovação, rejeição, suspensão e concessão fica registrada aqui.",
+    },
+  };
   return (
     <>
-      <div className="mb-8">
-        <p className="text-sm text-brand">Administração</p>
-        <h1 className="text-3xl font-bold">Painel administrativo</h1>
-        <p className="mt-2 text-muted-foreground">
-          Revise cadastros e acompanhe a atividade do Onde Tem.
-        </p>
-      </div>
-      {dashboard.isPending ? (
-        <Loading />
-      ) : dashboard.error ? (
-        <ErrorNotice onRetry={() => void dashboard.refetch()}>
-          {message(dashboard.error)}
-        </ErrorNotice>
-      ) : (
-        <>
-          <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {(
-              [
-                ["Empresas", dashboard.data.companies],
-                ["Aguardando aprovação", dashboard.data.pending],
-                ["Reivindicações pendentes", dashboard.data.pending_claims],
-                ["Usuários", dashboard.data.users],
-                ["Novas empresas (7 dias)", dashboard.data.new_companies_7d],
-                ["Assinaturas ativas", dashboard.data.active_subscriptions],
-                ["Testes grátis ativos", dashboard.data.active_trials],
-                [
-                  "Receita do mês",
-                  dashboard.data.revenue_this_month.toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  }),
-                ],
-              ] as const
-            ).map(([label, value]) => (
-              <div key={label} className="rounded-xl border border-border bg-card p-5">
-                <p className="text-sm text-muted-foreground">{label}</p>
-                <p className="mt-2 text-3xl font-bold">{value}</p>
+      <AdminShell
+        active={tab}
+        onSelectTab={(t) => {
+          setTab(t);
+          setPage(1);
+        }}
+      >
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold sm:text-3xl">{tabCopy[tab].title}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{tabCopy[tab].description}</p>
+        </div>
+        {tab === "dashboard" &&
+          (dashboard.isPending ? (
+            <Loading />
+          ) : dashboard.error ? (
+            <ErrorNotice onRetry={() => void dashboard.refetch()}>
+              {message(dashboard.error)}
+            </ErrorNotice>
+          ) : (
+            <>
+              <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {(
+                  [
+                    ["Empresas", dashboard.data.companies],
+                    ["Aguardando aprovação", dashboard.data.pending],
+                    ["Reivindicações pendentes", dashboard.data.pending_claims],
+                    ["Usuários", dashboard.data.users],
+                    ["Novas empresas (7 dias)", dashboard.data.new_companies_7d],
+                    ["Assinaturas ativas", dashboard.data.active_subscriptions],
+                    ["Testes grátis ativos", dashboard.data.active_trials],
+                    [
+                      "Receita do mês",
+                      dashboard.data.revenue_this_month.toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      }),
+                    ],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div key={label} className="rounded-xl border border-border bg-card p-5">
+                    <p className="text-sm text-muted-foreground">{label}</p>
+                    <p className="mt-2 text-3xl font-bold">{value}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="mb-8 rounded-xl border border-border bg-card p-5">
-            <p className="mb-3 text-sm font-semibold text-muted-foreground">
-              Empresas por plano
-            </p>
-            <div className="flex flex-wrap gap-4">
-              {["FREE", "FEATURED", "PREMIUM"].map((code) => (
-                <div key={code} className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-bold">
-                    {dashboard.data.companies_by_plan[code] ?? 0}
-                  </span>
-                  <span className="text-sm text-muted-foreground">{code}</span>
+              <div className="mb-8 rounded-xl border border-border bg-card p-5">
+                <p className="mb-3 text-sm font-semibold text-muted-foreground">
+                  Empresas por plano
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  {["FREE", "FEATURED", "PREMIUM"].map((code) => (
+                    <div key={code} className="flex items-baseline gap-1.5">
+                      <span className="text-2xl font-bold">
+                        {dashboard.data.companies_by_plan[code] ?? 0}
+                      </span>
+                      <span className="text-sm text-muted-foreground">{code}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-      <nav aria-label="Seções administrativas" className="mb-6 flex flex-wrap gap-2">
-        {(
-          [
-            ["companies", "Empresas"],
-            ["claims", "Reivindicações de empresas"],
-            ["users", "Usuários"],
-            ["trials", "Testes grátis"],
-            ["analytics", "Métricas"],
-            ["audit", "Histórico de ações"],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            aria-pressed={tab === value}
-            className={tab === value ? buttonClass : "rounded-lg border px-5 py-2 text-sm"}
-            onClick={() => {
-              setTab(value);
-              setPage(1);
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
+              </div>
+            </>
+          ))}
       {searchable && (
         <form
           className="mb-5 flex max-w-sm gap-2"
@@ -358,13 +519,8 @@ export function AdminPanel() {
           )}
         </>
       )}
-      {tab === "analytics" && (
-        <p className="mb-4 text-sm text-muted-foreground">
-          Interações registradas nos últimos 30 dias, agrupadas por empresa. Os identificadores
-          permitem relacionar os dados aos cadastros.
-        </p>
-      )}
-      {rows.isPending ? (
+      {tab !== "dashboard" &&
+        (rows.isPending ? (
         <Loading text="Carregando registros…" />
       ) : rows.error ? (
         <ErrorNotice onRetry={() => void rows.refetch()}>{message(rows.error)}</ErrorNotice>
@@ -658,7 +814,8 @@ export function AdminPanel() {
             </button>
           </div>
         </>
-      )}
+        ))}
+      </AdminShell>
       {action && (
         <div
           className="fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4"
