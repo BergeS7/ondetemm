@@ -17,6 +17,9 @@ export function listAnalytics(sql: Sql, values: unknown[] = [], page: Page) {
 export function suspendProfile(sql: Sql, values: unknown[] = []) {
   return one(sql, "update public.profiles set status='SUSPENDED' where id=$1 returning id", values);
 }
+export function reactivateProfile(sql: Sql, values: unknown[] = []) {
+  return sql.query('select public.reactivate_profile($1)', values);
+}
 export function auditSuspension(sql: Sql, values: unknown[] = []) {
   return sql.query(
     "insert into public.admin_audit_logs(admin_id,action,entity_type,entity_id,metadata) values($1,'USER_SUSPENDED','user',$2,$3)",

@@ -32,11 +32,11 @@ export function AdminAccess({ children }: { children: ReactNode }) {
     </RequireAccount>
   );
 }
-type Tab = "companies" | "claims" | "users" | "analytics" | "trials";
+type Tab = "companies" | "claims" | "users" | "analytics" | "trials" | "audit";
 type Action = {
   path: string;
   name: string;
-  kind: "approve" | "reject" | "suspend";
+  kind: "approve" | "reject" | "suspend" | "reactivate";
   user?: boolean;
 };
 type Profile = User & { status: string };
@@ -61,6 +61,27 @@ type Claim = {
   message: string | null;
   status: string;
   rejection_reason: string | null;
+};
+type AuditLog = {
+  id: string;
+  admin_id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+const auditActionLabels: Record<string, string> = {
+  COMPANY_APPROVED: "Empresa aprovada",
+  COMPANY_REJECTED: "Empresa rejeitada",
+  COMPANY_SUSPENDED: "Empresa suspensa",
+  COMPANY_REACTIVATED: "Empresa reativada",
+  COMPANY_CREATED_UNCLAIMED: "Empresa cadastrada pelo admin",
+  COMPANY_CLAIM_APPROVED: "Reivindicação aprovada",
+  USER_SUSPENDED: "Usuário suspenso",
+  USER_REACTIVATED: "Usuário reativado",
+  TRIAL_GRANTED: "Teste grátis concedido",
+  TRIAL_CANCELED: "Teste grátis cancelado",
 };
 const statuses = {
   DRAFT: "Rascunho",
@@ -104,11 +125,11 @@ export function AdminPanel() {
         companies_by_plan: Record<string, number>;
       }>("/admin/dashboard", { authenticated: true, signal }),
   });
-  const endpoint = tab === "claims" ? "company-claims" : tab;
+  const endpoint = tab === "claims" ? "company-claims" : tab === "audit" ? "audit-logs" : tab;
   const rows = useQuery({
     queryKey: [...key, tab, page, status],
     queryFn: ({ signal }) =>
-      api.request<Page<Company | Profile | Metric | Claim | Trial>>(
+      api.request<Page<Company | Profile | Metric | Claim | Trial | AuditLog>>(
         `/admin/${endpoint}?page=${page}&limit=10${tab === "companies" && status ? `&status=${status}` : ""}${tab === "claims" ? "&status=PENDING" : ""}`,
         { authenticated: true, signal },
       ),
@@ -139,7 +160,9 @@ export function AdminPanel() {
       api.request(target.path, {
         method: "POST",
         authenticated: true,
-        ...(target.kind === "reject" || target.user ? { body: { reason: why.trim() } } : {}),
+        ...(target.kind === "reject" || (target.user && target.kind === "suspend")
+          ? { body: { reason: why.trim() } }
+          : {}),
       }),
     onSuccess: async () => {
       setAction(null);
@@ -158,7 +181,7 @@ export function AdminPanel() {
     setReason("");
     setAction(target);
   }
-  const needsReason = action?.kind === "reject" || action?.user;
+  const needsReason = action?.kind === "reject" || (action?.user && action.kind === "suspend");
   return (
     <>
       <div className="mb-8">
@@ -226,6 +249,7 @@ export function AdminPanel() {
             ["users", "Usuários"],
             ["trials", "Testes grátis"],
             ["analytics", "Métricas"],
+            ["audit", "Histórico de ações"],
           ] as const
         ).map(([value, label]) => (
           <button
@@ -380,7 +404,20 @@ export function AdminPanel() {
                             Conceder teste grátis
                           </button>
                         )}
-                        {c.status !== "SUSPENDED" && (
+                        {c.status === "SUSPENDED" ? (
+                          <button
+                            className={buttonClass}
+                            onClick={() =>
+                              choose({
+                                path: `/admin/companies/${c.id}/approve`,
+                                name: c.name,
+                                kind: "reactivate",
+                              })
+                            }
+                          >
+                            Reativar empresa
+                          </button>
+                        ) : (
                           <button
                             className="rounded-lg border border-danger/30 px-4 py-2 text-danger"
                             onClick={() =>
@@ -474,6 +511,21 @@ export function AdminPanel() {
                           Suspender usuário
                         </button>
                       )}
+                      {p.status === "SUSPENDED" && (
+                        <button
+                          className={`${buttonClass} mt-3`}
+                          onClick={() =>
+                            choose({
+                              path: `/admin/users/${p.id}/reactivate`,
+                              name: p.name,
+                              kind: "reactivate",
+                              user: true,
+                            })
+                          }
+                        >
+                          Reativar usuário
+                        </button>
+                      )}
                     </article>
                   );
                 }
@@ -501,6 +553,29 @@ export function AdminPanel() {
                         >
                           {cancelTrialMutation.isPending ? "Cancelando…" : "Cancelar teste grátis"}
                         </button>
+                      )}
+                    </article>
+                  );
+                }
+                if (tab === "audit") {
+                  const l = row as AuditLog;
+                  return (
+                    <article key={l.id} className="rounded-xl border border-border p-5">
+                      <div className="flex flex-wrap justify-between gap-2">
+                        <h2 className="text-base font-bold">
+                          {auditActionLabels[l.action] ?? l.action}
+                        </h2>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(l.created_at).toLocaleString("pt-BR")}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {l.entity_type}: {l.entity_id}
+                      </p>
+                      {Object.keys(l.metadata ?? {}).length > 0 && (
+                        <pre className="mt-2 overflow-x-auto rounded-lg bg-muted p-3 text-xs">
+                          {JSON.stringify(l.metadata, null, 2)}
+                        </pre>
                       )}
                     </article>
                   );
@@ -563,7 +638,11 @@ export function AdminPanel() {
                 ? "Aprovar cadastro"
                 : action.kind === "reject"
                   ? "Rejeitar cadastro"
-                  : "Suspender acesso"}
+                  : action.kind === "reactivate"
+                    ? action.user
+                      ? "Reativar usuário"
+                      : "Reativar empresa"
+                    : "Suspender acesso"}
             </h2>
             <p>{action.name}</p>
             <p className="text-sm text-muted-foreground">
@@ -575,9 +654,13 @@ export function AdminPanel() {
                   ? "A empresa ficará disponível na busca pública."
                   : action.kind === "reject"
                     ? "O responsável receberá o motivo no painel e poderá corrigir o cadastro."
-                    : action.user
-                      ? "O usuário perderá acesso à conta. A reativação ainda não está disponível neste painel."
-                      : "A empresa sairá da busca pública. A reativação ainda não está disponível neste painel."}
+                    : action.kind === "reactivate"
+                      ? action.user
+                        ? "O usuário recupera o acesso à conta imediatamente."
+                        : "A empresa volta a ficar disponível na busca pública imediatamente."
+                      : action.user
+                        ? "O usuário perderá acesso à conta. Você pode reativá-lo a qualquer momento na aba Usuários."
+                        : "A empresa sairá da busca pública. Você pode reativá-la a qualquer momento na aba Empresas."}
             </p>
             {needsReason && (
               <label className="block text-sm">

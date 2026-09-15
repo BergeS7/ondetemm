@@ -480,11 +480,20 @@ function PerfilTab({
   const auth = useAuth(),
     cache = useQueryClient();
   const [notice, setNotice] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const submit = useMutation({
     mutationFn: (id: string) =>
       api.request(`/companies/${id}/submit`, { method: "POST", authenticated: true }),
     onSuccess: async () => {
       setNotice("Empresa enviada! A publicação acontecerá após a aprovação da administração.");
+      await cache.invalidateQueries({ queryKey: ["private", auth.user?.id] });
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) =>
+      api.request(`/companies/${id}`, { method: "DELETE", authenticated: true }),
+    onSuccess: async () => {
+      setConfirmingDelete(false);
       await cache.invalidateQueries({ queryKey: ["private", auth.user?.id] });
     },
   });
@@ -577,6 +586,52 @@ function PerfilTab({
             section={editSection}
             onClose={() => onEditSection(null)}
           />
+          <div className="mt-8 rounded-2xl border border-danger/30 bg-danger/5 p-5">
+            <h2 className="font-bold text-danger">Excluir empresa</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              A empresa sai da busca e do perfil público imediatamente. Fotos, avaliações e o
+              histórico de assinaturas são preservados para fins de auditoria, mas deixam de ficar
+              visíveis. Esta ação não pode ser desfeita pelo painel — fale com a administração para
+              restaurar o cadastro.
+            </p>
+            <button
+              type="button"
+              className="mt-3 rounded-lg border border-danger/40 px-4 py-2 text-sm font-semibold text-danger hover:bg-danger/10"
+              onClick={() => setConfirmingDelete(true)}
+            >
+              Excluir minha empresa
+            </button>
+          </div>
+          <Dialog open={confirmingDelete} onOpenChange={(open) => !open && setConfirmingDelete(false)}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Excluir "{company.name}"?</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                A empresa sairá imediatamente da busca e do perfil público. Esta ação não pode ser
+                desfeita por aqui.
+              </p>
+              {remove.error && <ErrorNotice>{message(remove.error)}</ErrorNotice>}
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  className="rounded-lg border px-4 py-2 text-sm font-semibold"
+                  disabled={remove.isPending}
+                  onClick={() => setConfirmingDelete(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-danger-foreground disabled:opacity-50"
+                  disabled={remove.isPending}
+                  onClick={() => remove.mutate(company.id)}
+                >
+                  {remove.isPending ? "Excluindo…" : "Sim, excluir"}
+                </button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>

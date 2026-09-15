@@ -134,5 +134,9 @@ export function adminRoutes(s: AdminService, guard: RequestHandler) {
       ),
     ),
   );
+  r.post(
+    '/users/:id/reactivate',
+    controller((req) => s.reactivateUser(actor(req), param(req))),
+  );
   return r;
 }

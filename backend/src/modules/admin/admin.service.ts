@@ -153,4 +153,11 @@ export class AdminService {
       return { success: true };
     });
   }
+  reactivateUser(a: Actor, id: string) {
+    this.check(a);
+    return this.db.run(a, async (s) => {
+      await queries.reactivateProfile(s, [id]);
+      return { success: true };
+    });
+  }
 }
